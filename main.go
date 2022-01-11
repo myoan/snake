@@ -123,22 +123,6 @@ func (b *Board) Update() {
 	b.Draw()
 }
 
-func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style) {
-	if y2 < y1 {
-		y1, y2 = y2, y1
-	}
-	if x2 < x1 {
-		x1, x2 = x2, x1
-	}
-
-	// Fill background
-	for row := y1; row <= y2; row++ {
-		for col := x1; col <= x2; col++ {
-			s.SetContent(col, row, ' ', nil, style)
-		}
-	}
-}
-
 func (b *Board) HitApple(x, y int) bool {
 	return b.board[y][x] == -1
 }
@@ -200,6 +184,7 @@ func gameStart(board *Board, event <-chan Event) error {
 				board.s.Fini()
 				os.Exit(0)
 			case "move":
+				// Do not turn around
 				if board.direction == MoveDown && ev.Direction == MoveUp ||
 					board.direction == MoveUp && ev.Direction == MoveDown ||
 					board.direction == MoveLeft && ev.Direction == MoveRight ||
