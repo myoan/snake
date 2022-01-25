@@ -169,47 +169,12 @@ func (b *Board) GetCell(x, y int) int {
 	return b.board[y][x]
 }
 
-func inputLoop(s tcell.Screen, event chan<- Event) {
-	for {
-		ev := s.PollEvent()
-
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			s.Sync()
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				event <- Event{Type: "quit"}
-			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
-				event <- Event{
-					Type:      "move",
-					Direction: MoveLeft,
-				}
-			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
-				event <- Event{
-					Type:      "move",
-					Direction: MoveRight,
-				}
-			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
-				event <- Event{
-					Type:      "move",
-					Direction: MoveUp,
-				}
-			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
-				event <- Event{
-					Type:      "move",
-					Direction: MoveDown,
-				}
-			}
-		}
-	}
-}
-
 type Game struct {
 	board *Board
 	event chan Event
 }
 
-func NewGame() *Game {
+func NewGame(client Client) *Game {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
 
 	s, err := tcell.NewScreen()
@@ -227,7 +192,8 @@ func NewGame() *Game {
 	board.GenerateApple()
 
 	event := make(chan Event)
-	go inputLoop(board.s, event)
+	// go inputLoop(board.s, event)
+	go client.Run(event, s)
 
 	return &Game{
 		board: board,
@@ -341,7 +307,11 @@ func main() {
 	}()
 
 	logger.Printf("game start")
-	game := NewGame()
+	client, err := NewCuiClient()
+	if err != nil {
+		logger.Printf("[ERROR] %v", err)
+	}
+	game := NewGame(client)
 	err = game.Start()
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
