@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"time"
-
-	"github.com/gdamore/tcell/v2"
 )
 
 const (
@@ -22,7 +20,6 @@ var (
 )
 
 type Board struct {
-	s         tcell.Screen
 	board     [][]int
 	currentX  int
 	currentY  int
@@ -32,13 +29,12 @@ type Board struct {
 	direction int
 }
 
-func NewBoard(s tcell.Screen, w, h int) *Board {
+func NewBoard(w, h int) *Board {
 	board := make([][]int, h)
 	for i := range board {
 		board[i] = make([]int, w)
 	}
 	return &Board{
-		s:        s,
 		board:    board,
 		currentX: 10,
 		currentY: 10,
@@ -46,56 +42,6 @@ func NewBoard(s tcell.Screen, w, h int) *Board {
 		width:    w,
 		height:   h,
 	}
-}
-
-func (b *Board) Draw() {
-	b.s.Clear()
-	snakeStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
-	appleStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
-	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	for y, row := range b.board {
-		for x, cell := range row {
-			if cell == 0 {
-				// Empty
-				b.DrawCell(x, y, defStyle)
-			} else if cell > 0 {
-				// Snake
-				b.DrawCell(x, y, snakeStyle)
-			} else {
-				// Applg
-				b.DrawCell(x, y, appleStyle)
-			}
-		}
-	}
-
-	// Draw borders
-	for col := 0; col <= b.width+1; col++ {
-		b.s.SetContent(col, 0, tcell.RuneHLine, nil, defStyle)
-		b.s.SetContent(col, b.height+1, tcell.RuneHLine, nil, defStyle)
-	}
-	for row := 0; row <= b.height+1; row++ {
-		b.s.SetContent(0, row, tcell.RuneVLine, nil, defStyle)
-		b.s.SetContent(b.width+1, row, tcell.RuneVLine, nil, defStyle)
-	}
-
-	// draw corners
-	b.s.SetContent(0, 0, tcell.RuneULCorner, nil, defStyle)
-	b.s.SetContent(0, b.height+1, tcell.RuneLLCorner, nil, defStyle)
-	b.s.SetContent(b.width+1, 0, tcell.RuneURCorner, nil, defStyle)
-	b.s.SetContent(b.width+1, b.height+1, tcell.RuneLRCorner, nil, defStyle)
-
-	b.s.Show()
-}
-
-func (b *Board) DrawCell(x, y int, style tcell.Style) {
-	b.s.SetContent(x+1, y+1, ' ', nil, style)
-}
-
-func (b *Board) drawBoard() {
-	for _, row := range b.board {
-		logger.Printf("%v", row)
-	}
-	logger.Println("")
 }
 
 func (b *Board) GenerateSnake(x, y int) {
@@ -158,7 +104,6 @@ func (b *Board) Update() {
 			}
 		}
 	}
-	b.Draw()
 }
 
 func (b *Board) HitApple(x, y int) bool {
@@ -170,56 +115,44 @@ func (b *Board) GetCell(x, y int) int {
 }
 
 type Game struct {
-	board *Board
-	event chan Event
+	board  *Board
+	event  chan Event
+	client Client
 }
 
 func NewGame(client Client) *Game {
-	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
-
-	s, err := tcell.NewScreen()
-	if err != nil {
-		log.Fatalf("%+v", err)
-	}
-	if err := s.Init(); err != nil {
-		log.Fatalf("%+v", err)
-	}
-	s.SetStyle(defStyle)
-	s.Clear()
-
-	board := NewBoard(s, 40, 30)
+	board := NewBoard(40, 30)
 	board.GenerateSnake(10, 20)
 	board.GenerateApple()
 
 	event := make(chan Event)
-	// go inputLoop(board.s, event)
-	go client.Run(event, s)
+	go client.Run(event)
 
 	return &Game{
-		board: board,
-		event: event,
+		board:  board,
+		event:  event,
+		client: client,
 	}
 }
 
 func (game *Game) Start() error {
 	t := time.NewTicker(150 * time.Millisecond)
 	// t := time.NewTicker(100 * time.Millisecond)
+	logger.Printf("Start game")
 	board := game.board
 	defer func() {
-		board.s.Fini()
+		// board.s.Fini()
 		os.Exit(0)
 		t.Stop()
 	}()
 
-	board.Draw()
-	board.drawBoard()
+	game.client.Update(board.board)
 
 	for {
 		select {
 		case ev := <-game.event:
 			switch ev.Type {
 			case "quit":
-				board.s.Fini()
 				os.Exit(0)
 			case "move":
 				// Do not turn around
@@ -232,8 +165,7 @@ func (game *Game) Start() error {
 				board.direction = ev.Direction
 			}
 		case <-t.C:
-			board.drawBoard()
-			logger.Printf("Hello")
+			game.client.Update(board.board)
 			logger.Printf("dir: %d", board.direction)
 			switch board.direction {
 			case MoveLeft:
@@ -296,7 +228,7 @@ func (game *Game) Start() error {
 }
 
 func main() {
-	f, err := os.OpenFile("game.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile("game.log", os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -307,7 +239,7 @@ func main() {
 	}()
 
 	logger.Printf("game start")
-	client, err := NewCuiClient()
+	client, err := NewCuiClient(40, 30)
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
 	}
