@@ -38,6 +38,7 @@ func NewBoard(w, h int) *Board {
 }
 
 type Player struct {
+	State     string
 	size      int
 	x         int
 	y         int
@@ -130,7 +131,19 @@ func (p *Player) GenerateSnake(b *Board) {
 	}
 }
 
+func NewPlayer(client Client, x, y, size int) *Player {
+	return &Player{
+		State:     "alive",
+		x:         x,
+		y:         y,
+		size:      size,
+		direction: rand.Intn(4),
+		Client:    client,
+	}
+}
+
 func (p *Player) Finish() {
+	p.State = "dead"
 	p.Client.Finish()
 }
 
@@ -169,41 +182,51 @@ func (b *Board) SetCell(x, y, data int) {
 }
 
 type Game struct {
-	board  *Board
-	event  chan Event
-	Player *Player
+	board   *Board
+	event   chan Event
+	Players []*Player
 }
 
-func NewGame(client Client) *Game {
+func NewGame(clients []Client) *Game {
 	board := NewBoard(40, 30)
 	board.GenerateApple()
 
 	event := make(chan Event)
-	go client.Run(event)
+	players := make([]*Player, len(clients))
 
-	p := &Player{
-		x:         10,
-		y:         20,
-		size:      3,
-		direction: rand.Intn(4),
-		Client:    client,
+	for i, client := range clients {
+		x := rand.Intn(40)
+		y := rand.Intn(30)
+
+		// p := NewPlayer(client, x, y, 3)
+		p := &Player{
+			State:     "alive",
+			x:         x,
+			y:         y,
+			size:      3,
+			direction: rand.Intn(4),
+			Client:    client,
+		}
+		p.GenerateSnake(board)
+		players[i] = p
+		go client.Run(event)
 	}
-	p.GenerateSnake(board)
 
 	return &Game{
-		board:  board,
-		event:  event,
-		Player: p,
+		board:   board,
+		event:   event,
+		Players: players,
 	}
 }
 
 func (game *Game) Start(msec int) error {
 	t := time.NewTicker(time.Duration(msec) * time.Millisecond)
-	logger.Printf("Start game")
 	board := game.board
 	defer t.Stop()
 
-	game.Player.Update(board)
+	for _, p := range game.Players {
+		p.Update(board)
+	}
 
 	for {
 		select {
@@ -212,26 +235,41 @@ func (game *Game) Start(msec int) error {
 			case "quit":
 				return fmt.Errorf("quit")
 			case "move":
-				logger.Printf("%d -> %d (up: %d, down: %d, left: %d, right: %d)", game.Player.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
-				// Do not turn around
 				p, err := game.FindPlayerByID(ev.ID)
 				if err != nil {
 					// Ignore
 					continue
 				}
-				if game.Player.direction == MoveDown && ev.Direction == MoveUp ||
-					game.Player.direction == MoveUp && ev.Direction == MoveDown ||
-					game.Player.direction == MoveLeft && ev.Direction == MoveRight ||
-					game.Player.direction == MoveRight && ev.Direction == MoveLeft {
+				if p.State != "alive" {
+					continue
+				}
+				logger.Printf("%d -> %d (up: %d, down: %d, left: %d, right: %d)", p.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
+
+				// Do not turn around
+				if p.direction == MoveDown && ev.Direction == MoveUp ||
+					p.direction == MoveUp && ev.Direction == MoveDown ||
+					p.direction == MoveLeft && ev.Direction == MoveRight ||
+					p.direction == MoveRight && ev.Direction == MoveLeft {
 					continue
 				}
 				p.direction = ev.Direction
 			}
 		case <-t.C:
-			game.Player.Update(board)
-			err := game.Player.Move(board)
-			if err != nil {
-				return err
+			for _, p := range game.Players {
+				if p.State != "alive" {
+					continue
+				}
+
+				err := p.Move(board)
+				if err != nil {
+					p.Finish()
+					return err
+				}
+				p.Update(board)
+			}
+
+			if game.isFinish() {
+				return nil
 			}
 			board.Update()
 		}
@@ -239,7 +277,21 @@ func (game *Game) Start(msec int) error {
 }
 
 func (game *Game) FindPlayerByID(id int) (*Player, error) {
-	return game.Player, nil
+	for _, p := range game.Players {
+		if p.ID() == id {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("Player(id: %d) Not found", id)
+}
+
+func (game *Game) isFinish() bool {
+	for _, p := range game.Players {
+		if p.State == "alive" {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
@@ -258,11 +310,11 @@ func main() {
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
 	}
-	game := NewGame(client)
+	clients := make([]Client, 1)
+	clients[0] = client
+	game := NewGame(clients)
 	err = game.Start(100)
 	if err != nil {
-		game.Player.Finish()
 		logger.Printf("[ERROR] %v", err)
 	}
-	logger.Printf("game finish")
 }
