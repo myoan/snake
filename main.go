@@ -45,6 +45,10 @@ type Player struct {
 	Client    Client
 }
 
+func (p *Player) ID() int {
+	return p.Client.ID()
+}
+
 func (p *Player) Move(board *Board) error {
 	var dx, dy int
 	switch p.direction {
@@ -210,13 +214,18 @@ func (game *Game) Start(msec int) error {
 			case "move":
 				logger.Printf("%d -> %d (up: %d, down: %d, left: %d, right: %d)", game.Player.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
 				// Do not turn around
+				p, err := game.FindPlayerByID(ev.ID)
+				if err != nil {
+					// Ignore
+					continue
+				}
 				if game.Player.direction == MoveDown && ev.Direction == MoveUp ||
 					game.Player.direction == MoveUp && ev.Direction == MoveDown ||
 					game.Player.direction == MoveLeft && ev.Direction == MoveRight ||
 					game.Player.direction == MoveRight && ev.Direction == MoveLeft {
 					continue
 				}
-				game.Player.direction = ev.Direction
+				p.direction = ev.Direction
 			}
 		case <-t.C:
 			game.Player.Update(board)
@@ -227,6 +236,10 @@ func (game *Game) Start(msec int) error {
 			board.Update()
 		}
 	}
+}
+
+func (game *Game) FindPlayerByID(id int) (*Player, error) {
+	return game.Player, nil
 }
 
 func main() {
@@ -241,7 +254,7 @@ func main() {
 	}()
 
 	logger.Printf("game start")
-	client, err := NewCuiClient(40, 30)
+	client, err := NewCuiClient(1, 40, 30)
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
 	}

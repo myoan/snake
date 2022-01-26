@@ -5,28 +5,36 @@ import (
 )
 
 type Event struct {
+	ID        int
 	Type      string
 	Direction int
 }
 
 type Client interface {
+	ID() int
 	Update(board [][]int)
 	Finish()
 	Run(chan<- Event)
 }
 
-func NewCuiClient(w, h int) (*CuiClient, error) {
+func NewCuiClient(id, w, h int) (*CuiClient, error) {
 	board, err := NewCuiBoard(w, h)
 	if err != nil {
 		return nil, err
 	}
 	return &CuiClient{
+		id:    id,
 		board: board,
 	}, nil
 }
 
 type CuiClient struct {
+	id    int
 	board *CuiBoard
+}
+
+func (c *CuiClient) ID() int {
+	return c.id
 }
 
 func (c *CuiClient) Update(board [][]int) {
@@ -46,21 +54,25 @@ func (c *CuiClient) Run(event chan<- Event) {
 				event <- Event{Type: "quit"}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
 				event <- Event{
+					ID:        c.ID(),
 					Type:      "move",
 					Direction: MoveLeft,
 				}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
 				event <- Event{
+					ID:        c.ID(),
 					Type:      "move",
 					Direction: MoveRight,
 				}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
 				event <- Event{
+					ID:        c.ID(),
 					Type:      "move",
 					Direction: MoveUp,
 				}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
 				event <- Event{
+					ID:        c.ID(),
 					Type:      "move",
 					Direction: MoveDown,
 				}
