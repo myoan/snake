@@ -20,13 +20,9 @@ var (
 )
 
 type Board struct {
-	board     [][]int
-	currentX  int
-	currentY  int
-	size      int
-	width     int
-	height    int
-	direction int
+	board  [][]int
+	width  int
+	height int
 }
 
 func NewBoard(w, h int) *Board {
@@ -35,24 +31,64 @@ func NewBoard(w, h int) *Board {
 		board[i] = make([]int, w)
 	}
 	return &Board{
-		board:    board,
-		currentX: 10,
-		currentY: 10,
-		size:     3,
-		width:    w,
-		height:   h,
+		board:  board,
+		width:  w,
+		height: h,
 	}
 }
 
-func (b *Board) GenerateSnake(x, y int) {
-	dir := rand.Intn(4)
-	logger.Printf("GenerateSnake(%d, %d)", x, y)
-	logger.Printf("dir: %d", dir)
-	b.currentX = x
-	b.currentY = y
-	b.direction = dir
+type Player struct {
+	size      int
+	x         int
+	y         int
+	direction int
+}
+
+func (p *Player) Move(board *Board) error {
 	var dx, dy int
-	switch dir {
+	switch p.direction {
+	case MoveLeft:
+		logger.Printf("MoveLeft")
+		dx = -1
+		dy = 0
+	case MoveRight:
+		logger.Printf("MoveRight")
+		dx = 1
+		dy = 0
+	case MoveUp:
+		logger.Printf("MoveUp")
+		dx = 0
+		dy = -1
+	case MoveDown:
+		logger.Printf("MoveDown")
+		dx = 0
+		dy = 1
+	}
+
+	nextX := p.x + dx
+	nextY := p.y + dy
+	logger.Printf("(%d, %d) -> (%d, %d)", p.x, p.y, nextX, nextY)
+
+	if nextX < 0 || nextX == board.width || nextY < 0 || nextY == board.height {
+		return fmt.Errorf("out of border")
+	}
+	if board.GetCell(nextX, nextY) > 0 {
+		return fmt.Errorf("stamp snake")
+	}
+	if board.HitApple(nextX, nextY) {
+		board.GenerateApple()
+		p.size++
+	}
+	board.SetCell(nextX, nextY, p.size+1)
+	p.x = nextX
+	p.y = nextY
+	return nil
+}
+
+func (p *Player) GenerateSnake(b *Board) {
+	logger.Printf("GenerateSnake(%d, %d)", p.x, p.y)
+	var dx, dy int
+	switch p.direction {
 	case MoveUp:
 		dx = 0
 		dy = 1
@@ -67,7 +103,9 @@ func (b *Board) GenerateSnake(x, y int) {
 		dy = 0
 	}
 
-	for i := b.size; i >= 0; i-- {
+	x := p.x
+	y := p.y
+	for i := p.size; i >= 0; i-- {
 		b.board[y][x] = i
 		logger.Printf("Set pos(%d, %d): %d", x, y, i)
 		if x+dx < 0 || x+dx >= b.width {
@@ -85,7 +123,6 @@ func (b *Board) GenerateSnake(x, y int) {
 
 func (b *Board) GenerateApple() {
 	for {
-
 		x := rand.Intn(b.width)
 		y := rand.Intn(b.height)
 
@@ -114,113 +151,70 @@ func (b *Board) GetCell(x, y int) int {
 	return b.board[y][x]
 }
 
+func (b *Board) SetCell(x, y, data int) {
+	b.board[y][x] = data
+}
+
 type Game struct {
 	board  *Board
 	event  chan Event
-	client Client
+	Client Client
+	Player *Player
 }
 
 func NewGame(client Client) *Game {
 	board := NewBoard(40, 30)
-	board.GenerateSnake(10, 20)
 	board.GenerateApple()
 
 	event := make(chan Event)
 	go client.Run(event)
 
+	p := &Player{
+		x:         10,
+		y:         20,
+		size:      3,
+		direction: rand.Intn(4),
+	}
+	p.GenerateSnake(board)
+
 	return &Game{
 		board:  board,
 		event:  event,
-		client: client,
+		Client: client,
+		Player: p,
 	}
 }
 
-func (game *Game) Start() error {
-	t := time.NewTicker(150 * time.Millisecond)
-	// t := time.NewTicker(100 * time.Millisecond)
+func (game *Game) Start(msec int) error {
+	t := time.NewTicker(time.Duration(msec) * time.Millisecond)
 	logger.Printf("Start game")
 	board := game.board
-	defer func() {
-		// board.s.Fini()
-		os.Exit(0)
-		t.Stop()
-	}()
+	defer t.Stop()
 
-	game.client.Update(board.board)
+	game.Client.Update(board.board)
 
 	for {
 		select {
 		case ev := <-game.event:
 			switch ev.Type {
 			case "quit":
-				os.Exit(0)
+				return fmt.Errorf("quit")
 			case "move":
+				logger.Printf("%d -> %d (up: %d, down: %d, left: %d, right: %d)", game.Player.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
 				// Do not turn around
-				if board.direction == MoveDown && ev.Direction == MoveUp ||
-					board.direction == MoveUp && ev.Direction == MoveDown ||
-					board.direction == MoveLeft && ev.Direction == MoveRight ||
-					board.direction == MoveRight && ev.Direction == MoveLeft {
+				if game.Player.direction == MoveDown && ev.Direction == MoveUp ||
+					game.Player.direction == MoveUp && ev.Direction == MoveDown ||
+					game.Player.direction == MoveLeft && ev.Direction == MoveRight ||
+					game.Player.direction == MoveRight && ev.Direction == MoveLeft {
 					continue
 				}
-				board.direction = ev.Direction
+				game.Player.direction = ev.Direction
 			}
 		case <-t.C:
-			game.client.Update(board.board)
-			logger.Printf("dir: %d", board.direction)
-			switch board.direction {
-			case MoveLeft:
-				if board.currentX == 0 {
-					return fmt.Errorf("out of border")
-				}
-				if board.GetCell(board.currentX-1, board.currentY) > 0 {
-					return fmt.Errorf("stamp snake")
-				}
-				if board.HitApple(board.currentX-1, board.currentY) {
-					board.GenerateApple()
-					board.size++
-				}
-				board.board[board.currentY][board.currentX-1] = board.size + 1
-				board.currentX--
-			case MoveRight:
-				logger.Printf("Hello Right")
-				if board.currentX == board.width {
-					return fmt.Errorf("out of border")
-				}
-				if board.GetCell(board.currentX+1, board.currentY) > 0 {
-					return fmt.Errorf("stamp snake")
-				}
-				if board.HitApple(board.currentX+1, board.currentY) {
-					board.GenerateApple()
-					board.size++
-				}
-				board.board[board.currentY][board.currentX+1] = board.size + 1
-				board.currentX++
-			case MoveUp:
-				if board.currentY == 0 {
-					return fmt.Errorf("out of border")
-				}
-				if board.GetCell(board.currentX, board.currentY-1) > 0 {
-					return fmt.Errorf("stamp snake")
-				}
-				if board.HitApple(board.currentX, board.currentY-1) {
-					board.GenerateApple()
-					board.size++
-				}
-				board.board[board.currentY-1][board.currentX] = board.size + 1
-				board.currentY--
-			case MoveDown:
-				if board.currentY == board.height {
-					return fmt.Errorf("out of border")
-				}
-				if board.GetCell(board.currentX, board.currentY+1) > 0 {
-					return fmt.Errorf("stamp snake")
-				}
-				if board.HitApple(board.currentX, board.currentY+1) {
-					board.GenerateApple()
-					board.size++
-				}
-				board.board[board.currentY+1][board.currentX] = board.size + 1
-				board.currentY++
+			game.Client.Update(board.board)
+			err := game.Player.Move(board)
+			if err != nil {
+				return err
 			}
 			board.Update()
 		}
@@ -228,7 +222,7 @@ func (game *Game) Start() error {
 }
 
 func main() {
-	f, err := os.OpenFile("game.log", os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile("game.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -244,10 +238,10 @@ func main() {
 		logger.Printf("[ERROR] %v", err)
 	}
 	game := NewGame(client)
-	err = game.Start()
+	err = game.Start(100)
 	if err != nil {
+		game.Client.Finish()
 		logger.Printf("[ERROR] %v", err)
 	}
 	logger.Printf("game finish")
-	panic("hogehoge")
 }

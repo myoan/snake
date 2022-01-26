@@ -11,6 +11,7 @@ type Event struct {
 
 type Client interface {
 	Update(board [][]int)
+	Finish()
 	Run(chan<- Event)
 }
 
@@ -68,6 +69,10 @@ func (c *CuiClient) Run(event chan<- Event) {
 	}
 }
 
+func (c *CuiClient) Finish() {
+	c.board.s.Fini()
+}
+
 type CuiBoard struct {
 	s      tcell.Screen
 	board  [][]int
@@ -101,7 +106,6 @@ func NewCuiBoard(w, h int) (*CuiBoard, error) {
 }
 
 func (b *CuiBoard) Draw(board [][]int) {
-	logger.Printf("Draw board")
 	width := len(board[0])
 	height := len(board)
 	b.s.Clear()
@@ -139,9 +143,7 @@ func (b *CuiBoard) Draw(board [][]int) {
 	b.s.SetContent(width+1, 0, tcell.RuneURCorner, nil, defStyle)
 	b.s.SetContent(width+1, b.height+1, tcell.RuneLRCorner, nil, defStyle)
 
-	logger.Printf("Draw Show")
 	b.s.Show()
-	logger.Printf("Draw Show")
 }
 
 func (b *CuiBoard) DrawCell(x, y int, style tcell.Style) {
