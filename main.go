@@ -42,6 +42,7 @@ type Player struct {
 	x         int
 	y         int
 	direction int
+	Client    Client
 }
 
 func (p *Player) Move(board *Board) error {
@@ -85,6 +86,10 @@ func (p *Player) Move(board *Board) error {
 	return nil
 }
 
+func (p *Player) Update(board *Board) {
+	p.Client.Update(board.board)
+}
+
 func (p *Player) GenerateSnake(b *Board) {
 	logger.Printf("GenerateSnake(%d, %d)", p.x, p.y)
 	var dx, dy int
@@ -121,13 +126,17 @@ func (p *Player) GenerateSnake(b *Board) {
 	}
 }
 
+func (p *Player) Finish() {
+	p.Client.Finish()
+}
+
 func (b *Board) GenerateApple() {
 	for {
 		x := rand.Intn(b.width)
 		y := rand.Intn(b.height)
 
-		if b.board[y][x] == 0 {
-			b.board[y][x] = -1
+		if b.GetCell(x, y) == 0 {
+			b.SetCell(x, y, -1)
 			return
 		}
 	}
@@ -158,7 +167,6 @@ func (b *Board) SetCell(x, y, data int) {
 type Game struct {
 	board  *Board
 	event  chan Event
-	Client Client
 	Player *Player
 }
 
@@ -174,13 +182,13 @@ func NewGame(client Client) *Game {
 		y:         20,
 		size:      3,
 		direction: rand.Intn(4),
+		Client:    client,
 	}
 	p.GenerateSnake(board)
 
 	return &Game{
 		board:  board,
 		event:  event,
-		Client: client,
 		Player: p,
 	}
 }
@@ -191,7 +199,7 @@ func (game *Game) Start(msec int) error {
 	board := game.board
 	defer t.Stop()
 
-	game.Client.Update(board.board)
+	game.Player.Update(board)
 
 	for {
 		select {
@@ -211,7 +219,7 @@ func (game *Game) Start(msec int) error {
 				game.Player.direction = ev.Direction
 			}
 		case <-t.C:
-			game.Client.Update(board.board)
+			game.Player.Update(board)
 			err := game.Player.Move(board)
 			if err != nil {
 				return err
@@ -240,7 +248,7 @@ func main() {
 	game := NewGame(client)
 	err = game.Start(100)
 	if err != nil {
-		game.Client.Finish()
+		game.Player.Finish()
 		logger.Printf("[ERROR] %v", err)
 	}
 	logger.Printf("game finish")
