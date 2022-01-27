@@ -12,9 +12,81 @@ type Event struct {
 
 type Client interface {
 	ID() int
-	Update(board [][]int)
+	Update(x, y, size, dir int, board [][]int)
 	Finish()
 	Run(chan<- Event)
+}
+
+type RandomClient struct {
+	id        int
+	width     int
+	height    int
+	x         int
+	y         int
+	dir       int
+	forceTurn chan int
+}
+
+func (c *RandomClient) ID() int {
+	return c.id
+}
+
+func (c *RandomClient) Update(x, y, size, dir int, board [][]int) {
+	c.x = x
+	c.y = y
+	c.dir = dir
+
+	nextX, nextY := c.getNextCell()
+	if nextX < 0 || nextX == c.width || nextY < 0 || nextY == c.height {
+		logger.Printf("Enable forceTurn")
+		c.forceTurn <- 1
+	}
+}
+
+func (c *RandomClient) Finish() {}
+func (c *RandomClient) Run(event chan<- Event) {
+	for range c.forceTurn {
+		var dir int
+		switch c.dir {
+		case MoveLeft:
+			dir = MoveUp
+		case MoveRight:
+			dir = MoveDown
+		case MoveUp:
+			dir = MoveRight
+		case MoveDown:
+			dir = MoveLeft
+		}
+		event <- Event{
+			ID:        c.ID(),
+			Type:      "move",
+			Direction: dir,
+		}
+	}
+}
+
+func (c *RandomClient) getNextCell() (int, int) {
+	switch c.dir {
+	case MoveLeft:
+		return c.x - 1, c.y
+	case MoveRight:
+		return c.x + 1, c.y
+	case MoveUp:
+		return c.x, c.y - 1
+	case MoveDown:
+		return c.x, c.y + 1
+	}
+	return 0, 0
+}
+
+func NewRandomClient(id, w, h int) (*RandomClient, error) {
+	stream := make(chan int)
+	return &RandomClient{
+		id:        id,
+		width:     w,
+		height:    h,
+		forceTurn: stream,
+	}, nil
 }
 
 func NewCuiClient(id, w, h int) (*CuiClient, error) {
@@ -37,7 +109,7 @@ func (c *CuiClient) ID() int {
 	return c.id
 }
 
-func (c *CuiClient) Update(board [][]int) {
+func (c *CuiClient) Update(x, y, size, dir int, board [][]int) {
 	c.board.Draw(board)
 }
 

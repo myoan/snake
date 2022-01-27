@@ -92,7 +92,7 @@ func (p *Player) Move(board *Board) error {
 }
 
 func (p *Player) Update(board *Board) {
-	p.Client.Update(board.board)
+	p.Client.Update(p.x, p.y, p.size, p.direction, board.board)
 }
 
 func (p *Player) GenerateSnake(b *Board) {
@@ -117,7 +117,6 @@ func (p *Player) GenerateSnake(b *Board) {
 	y := p.y
 	for i := p.size; i >= 0; i-- {
 		b.board[y][x] = i
-		logger.Printf("Set pos(%d, %d): %d", x, y, i)
 		if x+dx < 0 || x+dx >= b.width {
 			dx = 0
 			dy = 1
@@ -243,7 +242,7 @@ func (game *Game) Start(msec int) error {
 				if p.State != "alive" {
 					continue
 				}
-				logger.Printf("%d -> %d (up: %d, down: %d, left: %d, right: %d)", p.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
+				logger.Printf("[id: %d] %d -> %d (up: %d, down: %d, left: %d, right: %d)", p.ID(), p.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
 
 				// Do not turn around
 				if p.direction == MoveDown && ev.Direction == MoveUp ||
@@ -310,8 +309,13 @@ func main() {
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
 	}
-	clients := make([]Client, 1)
+	npc, err := NewRandomClient(2, 40, 30)
+	if err != nil {
+		logger.Printf("[ERROR] %v", err)
+	}
+	clients := make([]Client, 2)
 	clients[0] = client
+	clients[1] = npc
 	game := NewGame(clients)
 	err = game.Start(100)
 	if err != nil {
