@@ -200,13 +200,13 @@ func (b *CuiBoard) Draw(board [][]int) {
 		for x, cell := range row {
 			if cell == 0 {
 				// Empty
-				b.DrawCell(x, y, defStyle)
+				b.s.SetContent(x+2, y+1, ' ', nil, defStyle)
 			} else if cell > 0 {
 				// Snake
-				b.DrawCell(x, y, snakeStyle)
+				b.s.SetContent(x+2, y+1, ' ', nil, snakeStyle)
 			} else {
 				// Applg
-				b.DrawCell(x, y, appleStyle)
+				b.s.SetContent(x+2, y+1, ' ', nil, appleStyle)
 			}
 		}
 	}
@@ -218,20 +218,16 @@ func (b *CuiBoard) Draw(board [][]int) {
 	}
 	for row := 0; row <= height+1; row++ {
 		b.s.SetContent(0, row, tcell.RuneVLine, nil, defStyle)
-		b.s.SetContent(width+1, row, tcell.RuneVLine, nil, defStyle)
+		b.s.SetContent(width+2, row, tcell.RuneVLine, nil, defStyle)
 	}
 
 	// draw corners
 	b.s.SetContent(0, 0, tcell.RuneULCorner, nil, defStyle)
 	b.s.SetContent(0, height+1, tcell.RuneLLCorner, nil, defStyle)
-	b.s.SetContent(width+1, 0, tcell.RuneURCorner, nil, defStyle)
-	b.s.SetContent(width+1, b.height+1, tcell.RuneLRCorner, nil, defStyle)
+	b.s.SetContent(width+2, 0, tcell.RuneURCorner, nil, defStyle)
+	b.s.SetContent(width+2, b.height+1, tcell.RuneLRCorner, nil, defStyle)
 
 	b.s.Show()
-}
-
-func (b *CuiBoard) DrawCell(x, y int, style tcell.Style) {
-	b.s.SetContent(x+1, y+1, ' ', nil, style)
 }
 
 // func (b *CuiBoard) drawBoard() {
