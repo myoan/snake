@@ -180,6 +180,12 @@ func (b *Board) SetCell(x, y, data int) {
 	b.board[y][x] = data
 }
 
+type Event struct {
+	ID        int
+	Type      string
+	Direction int
+}
+
 type Game struct {
 	board   *Board
 	event   chan Event

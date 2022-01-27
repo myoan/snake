@@ -1,14 +1,6 @@
 package main
 
-import (
-	"github.com/gdamore/tcell/v2"
-)
-
-type Event struct {
-	ID        int
-	Type      string
-	Direction int
-}
+import "github.com/gdamore/tcell/v2"
 
 type Client interface {
 	ID() int
