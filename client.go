@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -104,7 +102,7 @@ func NewRandomClient(id, w, h int) (*RandomClient, error) {
 
 type GameClient struct {
 	id           int
-	ingameClient *CuiClient
+	ingameClient *CuiIngameClient
 	board        *CuiBoard
 	event        chan Event
 }
@@ -153,7 +151,7 @@ func NewGameClient(id, w, h int) (*GameClient, error) {
 		return nil, err
 	}
 	event := make(chan Event)
-	ingame := newCuiClient(id, event, board)
+	ingame := newCuiIngameClient(id, event, board)
 	client := &GameClient{
 		id:           id,
 		ingameClient: ingame,
@@ -168,15 +166,15 @@ func (c *GameClient) Finish() {
 	c.board.s.Fini()
 }
 
-func (c *GameClient) NewIngameClient() *CuiClient {
-	client := newCuiClient(c.id, c.event, c.board)
+func (c *GameClient) NewIngameClient() *CuiIngameClient {
+	client := newCuiIngameClient(c.id, c.event, c.board)
 	c.ingameClient = client
 	return client
 }
 
-func newCuiClient(id int, event <-chan Event, board *CuiBoard) *CuiClient {
+func newCuiIngameClient(id int, event <-chan Event, board *CuiBoard) *CuiIngameClient {
 	done := make(chan int)
-	return &CuiClient{
+	return &CuiIngameClient{
 		id:         id,
 		state:      "alive",
 		board:      board,
@@ -185,7 +183,7 @@ func newCuiClient(id int, event <-chan Event, board *CuiBoard) *CuiClient {
 	}
 }
 
-type CuiClient struct {
+type CuiIngameClient struct {
 	id         int
 	state      string
 	board      *CuiBoard
@@ -193,16 +191,17 @@ type CuiClient struct {
 	done       chan int
 }
 
-func (c *CuiClient) ID() int {
+func (c *CuiIngameClient) ID() int {
 	return c.id
 }
 
-func (c *CuiClient) Update(x, y, size, dir int, state string, board [][]int) {
+func (c *CuiIngameClient) Update(x, y, size, dir int, state string, board [][]int) {
 	c.state = state
-	c.board.Draw(board, size)
+	c.board.Set(board)
+	c.board.Draw()
 }
 
-func (c *CuiClient) Run(event chan<- Event) {
+func (c *CuiIngameClient) Run(event chan<- Event) {
 	for {
 		select {
 		case <-c.done:
@@ -213,13 +212,14 @@ func (c *CuiClient) Run(event chan<- Event) {
 	}
 }
 
-func (c *CuiClient) Finish() {
+func (c *CuiIngameClient) Finish() {
 	logger.Printf("CuiClient.Finish")
 	c.done <- 1
 	c.board.Reset()
+	c.board.Draw()
 }
 
-func (c *CuiClient) Quit() {}
+func (c *CuiIngameClient) Quit() {}
 
 type CuiBoard struct {
 	s      tcell.Screen
@@ -253,12 +253,20 @@ func NewCuiBoard(w, h int) (*CuiBoard, error) {
 	}, nil
 }
 
-func (b *CuiBoard) Reset() {
-	board := make([][]int, b.height)
-	for i := range board {
-		board[i] = make([]int, b.width)
+func (b *CuiBoard) Set(board [][]int) {
+	for y := 0; y < b.height; y++ {
+		for x := 0; x < b.width; x++ {
+			b.board[y][x] = board[y][x]
+		}
 	}
-	b.Draw(board, 0)
+}
+
+func (b *CuiBoard) Reset() {
+	for y := 0; y < b.height; y++ {
+		for x := 0; x < b.width; x++ {
+			b.board[y][x] = 0
+		}
+	}
 }
 
 func (b *CuiBoard) InsertWord(x, y int, str string) {
@@ -268,14 +276,14 @@ func (b *CuiBoard) InsertWord(x, y int, str string) {
 	}
 }
 
-func (b *CuiBoard) Draw(board [][]int, size int) {
-	width := len(board[0])
-	height := len(board)
+func (b *CuiBoard) Draw() {
+	width := b.width
+	height := b.height
 	b.s.Clear()
 	snakeStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
 	appleStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	for y, row := range board {
+	for y, row := range b.board {
 		for x, cell := range row {
 			if cell == 0 {
 				// Empty
@@ -305,7 +313,7 @@ func (b *CuiBoard) Draw(board [][]int, size int) {
 	b.s.SetContent(0, height+1, tcell.RuneLLCorner, nil, defStyle)
 	b.s.SetContent(width+2, 0, tcell.RuneURCorner, nil, defStyle)
 	b.s.SetContent(width+2, b.height+1, tcell.RuneLRCorner, nil, defStyle)
-	b.InsertWord(width+4, 3, fmt.Sprintf("Score: %d", size))
+	// b.InsertWord(width+4, 3, fmt.Sprintf("Score: %d", size))
 
 	b.s.Show()
 }

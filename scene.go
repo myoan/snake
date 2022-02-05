@@ -31,11 +31,12 @@ func (game *GameStateMachine) InitUpdate() {
 	// TODO: Add CPU Player
 
 	ingame := game.gc.NewIngameClient()
-	// TODO: Reset client
+	// Reset Client
 	clients := make([]Client, 1)
 	clients[0] = ingame
 	game.gs.Clients = clients
-	game.gs.Game.AddClient(ingame)
+	game.gs.Game.ResetPlayers()
+	game.gs.Game.AddPlayer(ingame)
 	game.sm.Run(game.gs.Start, GameArgument{clients: game.gs.Clients})
 }
 
@@ -118,7 +119,7 @@ func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, 
 }
 
 func NewGameStateMachine() *GameStateMachine {
-	game := NewGame()
+	game := NewGame(40, 30)
 	clients := make([]Client, 0)
 	gs := &GameState{
 		state:   GameInit,

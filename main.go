@@ -192,8 +192,8 @@ type Game struct {
 	Players []*Player
 }
 
-func NewGame() *Game {
-	board := NewBoard(40, 30)
+func NewGame(w, h int) *Game {
+	board := NewBoard(w, h)
 	board.GenerateApple()
 
 	event := make(chan Event)
@@ -206,9 +206,14 @@ func NewGame() *Game {
 	}
 }
 
-func (game *Game) AddClient(client Client) {
-	x := rand.Intn(40)
-	y := rand.Intn(30)
+func (game *Game) ResetPlayers() {
+	players := make([]*Player, 0)
+	game.Players = players
+}
+
+func (game *Game) AddPlayer(client Client) {
+	x := rand.Intn(game.board.width)
+	y := rand.Intn(game.board.height)
 
 	p := &Player{
 		State:     "alive",
@@ -228,12 +233,11 @@ func (game *Game) IsFinish() bool {
 
 func (game *Game) Start(msec int) error {
 	t := time.NewTicker(time.Duration(msec) * time.Millisecond)
-	board := game.board
 	defer t.Stop()
 
 	for _, p := range game.Players {
-		p.GenerateSnake(board)
-		p.Update(board)
+		p.GenerateSnake(game.board)
+		p.Update(game.board)
 	}
 
 	for {
@@ -270,12 +274,12 @@ func (game *Game) Start(msec int) error {
 					continue
 				}
 
-				err := p.Move(board)
+				err := p.Move(game.board)
 				if err != nil {
 					p.Finish()
 					return nil
 				}
-				p.Update(board)
+				p.Update(game.board)
 			}
 
 			if game.isFinish() {
@@ -286,7 +290,7 @@ func (game *Game) Start(msec int) error {
 				}
 				return nil
 			}
-			board.Update()
+			game.board.Update()
 		}
 	}
 }
@@ -331,7 +335,7 @@ func main() {
 	go client.Run()
 	stateMachine := NewGameStateMachine()
 	stateMachine.AddGameClient(client)
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		stateMachine.InitUpdate()
 		stateMachine.StartUpdate()
 		stateMachine.FinishUpdate()
