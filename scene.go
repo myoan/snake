@@ -31,10 +31,8 @@ func (game *GameStateMachine) InitUpdate() {
 	// TODO: Add CPU Player
 
 	ingame := game.gc.NewIngameClient(game.gs.Game.FetchEvent())
-	// Reset Client
-	clients := make([]Client, 1)
-	clients[0] = ingame
-	game.gs.Clients = clients
+	game.gs.ResetClient()
+	game.gs.AddClient(ingame)
 	game.gs.Game.ResetPlayers()
 	game.gs.Game.AddPlayer(ingame)
 	game.sm.Run(game.gs.Start, GameArgument{clients: game.gs.Clients})
@@ -79,6 +77,14 @@ func (gs *GameState) SetState(state stateful.State) error {
 	return nil
 }
 
+func (gs *GameState) ResetClient() {
+	gs.Clients = make([]Client, 0)
+}
+
+func (gs *GameState) AddClient(client Client) {
+	gs.Clients = append(gs.Clients, client)
+}
+
 func (gs *GameState) Start(args stateful.TransitionArguments) (stateful.State, error) {
 	logger.Printf("execute GameState.Start")
 	gargs, ok := args.(GameArgument)
@@ -111,7 +117,6 @@ func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, 
 
 	if gs.Game.IsFinish() {
 		logger.Printf("Phase move to finish")
-		gs.Game.Reset()
 		return GameFinish, nil
 	}
 	logger.Printf("Phase stay to start")
