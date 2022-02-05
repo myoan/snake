@@ -151,13 +151,12 @@ func NewGameClient(id, w, h int) (*GameClient, error) {
 		return nil, err
 	}
 	event := make(chan Event)
-	ingame := newCuiIngameClient(id, event, board)
 	client := &GameClient{
-		id:           id,
-		ingameClient: ingame,
-		board:        board,
-		event:        event,
+		id:    id,
+		board: board,
+		event: event,
 	}
+	go client.Run()
 	return client, nil
 }
 
@@ -166,21 +165,23 @@ func (c *GameClient) Finish() {
 	c.board.s.Fini()
 }
 
-func (c *GameClient) NewIngameClient() *CuiIngameClient {
-	client := newCuiIngameClient(c.id, c.event, c.board)
+func (c *GameClient) NewIngameClient(output chan<- Event) *CuiIngameClient {
+	client := newCuiIngameClient(c.id, c.event, output, c.board)
 	c.ingameClient = client
 	return client
 }
 
-func newCuiIngameClient(id int, event <-chan Event, board *CuiBoard) *CuiIngameClient {
+func newCuiIngameClient(id int, input <-chan Event, output chan<- Event, board *CuiBoard) *CuiIngameClient {
 	done := make(chan int)
-	return &CuiIngameClient{
+	client := &CuiIngameClient{
 		id:         id,
 		state:      "alive",
 		board:      board,
-		controller: event,
+		controller: input,
 		done:       done,
 	}
+	go client.Run(output)
+	return client
 }
 
 type CuiIngameClient struct {
