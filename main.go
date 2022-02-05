@@ -54,19 +54,15 @@ func (p *Player) Move(board *Board) error {
 	var dx, dy int
 	switch p.direction {
 	case MoveLeft:
-		logger.Printf("MoveLeft")
 		dx = -1
 		dy = 0
 	case MoveRight:
-		logger.Printf("MoveRight")
 		dx = 1
 		dy = 0
 	case MoveUp:
-		logger.Printf("MoveUp")
 		dx = 0
 		dy = -1
 	case MoveDown:
-		logger.Printf("MoveDown")
 		dx = 0
 		dy = 1
 	}
@@ -92,7 +88,11 @@ func (p *Player) Move(board *Board) error {
 }
 
 func (p *Player) Update(board *Board) {
-	p.Client.Update(p.x, p.y, p.size, p.direction, board.board)
+	p.Client.Update(p.x, p.y, p.size, p.direction, p.State, board.board)
+}
+
+func (p *Player) Quit() {
+	p.Client.Quit()
 }
 
 func (p *Player) GenerateSnake(b *Board) {
@@ -192,30 +192,12 @@ type Game struct {
 	Players []*Player
 }
 
-func NewGame(clients []Client) *Game {
+func NewGame() *Game {
 	board := NewBoard(40, 30)
 	board.GenerateApple()
 
 	event := make(chan Event)
-	players := make([]*Player, len(clients))
-
-	for i, client := range clients {
-		x := rand.Intn(40)
-		y := rand.Intn(30)
-
-		// p := NewPlayer(client, x, y, 3)
-		p := &Player{
-			State:     "alive",
-			x:         x,
-			y:         y,
-			size:      3,
-			direction: rand.Intn(4),
-			Client:    client,
-		}
-		p.GenerateSnake(board)
-		players[i] = p
-		go client.Run(event)
-	}
+	players := make([]*Player, 0, 1)
 
 	return &Game{
 		board:   board,
@@ -224,12 +206,33 @@ func NewGame(clients []Client) *Game {
 	}
 }
 
+func (game *Game) AddClient(client Client) {
+	x := rand.Intn(40)
+	y := rand.Intn(30)
+
+	p := &Player{
+		State:     "alive",
+		x:         x,
+		y:         y,
+		size:      3,
+		direction: rand.Intn(4),
+		Client:    client,
+	}
+	go client.Run(game.event)
+	game.Players = append(game.Players, p)
+}
+
+func (game *Game) IsFinish() bool {
+	return game.isFinish()
+}
+
 func (game *Game) Start(msec int) error {
 	t := time.NewTicker(time.Duration(msec) * time.Millisecond)
 	board := game.board
 	defer t.Stop()
 
 	for _, p := range game.Players {
+		p.GenerateSnake(board)
 		p.Update(board)
 	}
 
@@ -238,6 +241,8 @@ func (game *Game) Start(msec int) error {
 		case ev := <-game.event:
 			switch ev.Type {
 			case "quit":
+				p, _ := game.FindPlayerByID(ev.ID)
+				p.Quit()
 				return fmt.Errorf("quit")
 			case "move":
 				p, err := game.FindPlayerByID(ev.ID)
@@ -268,17 +273,27 @@ func (game *Game) Start(msec int) error {
 				err := p.Move(board)
 				if err != nil {
 					p.Finish()
-					return err
+					return nil
 				}
 				p.Update(board)
 			}
 
 			if game.isFinish() {
+				for _, p := range game.Players {
+					if p.State == "alive" {
+						p.Finish()
+					}
+				}
 				return nil
 			}
 			board.Update()
 		}
 	}
+}
+
+func (game *Game) Reset() {
+	players := make([]*Player, 0, 1)
+	game.Players = players
 }
 
 func (game *Game) FindPlayerByID(id int) (*Player, error) {
@@ -296,6 +311,7 @@ func (game *Game) isFinish() bool {
 			return false
 		}
 	}
+	logger.Printf("--- Game is finish ---")
 	return true
 }
 
@@ -310,21 +326,41 @@ func main() {
 		f.Close()
 	}()
 
-	logger.Printf("game start")
-	client, err := NewCuiClient(1, 40, 30)
-	if err != nil {
-		logger.Printf("[ERROR] %v", err)
+	logger.Printf("========== GAME START ==========")
+	client, _ := NewGameClient(1, 40, 30)
+	go client.Run()
+	stateMachine := NewGameStateMachine()
+	stateMachine.AddGameClient(client)
+	// d := time.Duration(300) * time.Millisecond
+	// t := time.NewTicker(d)
+	for i := 0; i < 2; i++ {
+		stateMachine.InitUpdate()
+		stateMachine.StartUpdate()
+		stateMachine.FinishUpdate()
 	}
-	npc, err := NewRandomClient(2, 40, 30)
-	if err != nil {
-		logger.Printf("[ERROR] %v", err)
-	}
-	clients := make([]Client, 2)
-	clients[0] = client
-	clients[1] = npc
-	game := NewGame(clients)
-	err = game.Start(100)
-	if err != nil {
-		logger.Printf("[ERROR] %v", err)
-	}
+
+	client.Finish()
+
+	/*
+		for range t.C {
+			logger.Printf("tick")
+			switch stateMachine.gs.State() {
+			case GameInit:
+				stateMachine.InitUpdate()
+			case GameStart:
+				logger.Printf("Stop tick")
+				t.Stop()
+				err := stateMachine.StartUpdate()
+				if err != nil {
+					os.Exit(0)
+				}
+				logger.Printf("Reset tick")
+				t.Reset(d)
+			case GameFinish:
+				logger.Printf("execute finishUpdate")
+				stateMachine.FinishUpdate()
+			}
+		}
+	*/
+	logger.Printf("========== GAME FINISH ==========")
 }

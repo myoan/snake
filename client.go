@@ -1,12 +1,17 @@
 package main
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"fmt"
+
+	"github.com/gdamore/tcell/v2"
+)
 
 type Client interface {
 	ID() int
-	Update(x, y, size, dir int, board [][]int)
+	Update(x, y, size, dir int, state string, board [][]int)
 	Finish()
 	Run(chan<- Event)
+	Quit()
 }
 
 type RandomClient struct {
@@ -17,13 +22,14 @@ type RandomClient struct {
 	y         int
 	dir       int
 	forceTurn chan int
+	done      chan int
 }
 
 func (c *RandomClient) ID() int {
 	return c.id
 }
 
-func (c *RandomClient) Update(x, y, size, dir int, board [][]int) {
+func (c *RandomClient) Update(x, y, size, dir int, state string, board [][]int) {
 	c.x = x
 	c.y = y
 	c.dir = dir
@@ -35,24 +41,36 @@ func (c *RandomClient) Update(x, y, size, dir int, board [][]int) {
 	}
 }
 
-func (c *RandomClient) Finish() {}
+func (c *RandomClient) Finish() {
+	logger.Printf("RandomClient.Finish")
+	c.done <- 1
+}
+func (c *RandomClient) Quit() {
+	logger.Printf("RandomClient.Quit")
+	c.done <- 1
+}
 func (c *RandomClient) Run(event chan<- Event) {
-	for range c.forceTurn {
-		var dir int
-		switch c.dir {
-		case MoveLeft:
-			dir = MoveUp
-		case MoveRight:
-			dir = MoveDown
-		case MoveUp:
-			dir = MoveRight
-		case MoveDown:
-			dir = MoveLeft
-		}
-		event <- Event{
-			ID:        c.ID(),
-			Type:      "move",
-			Direction: dir,
+	for {
+		select {
+		case <-c.forceTurn:
+			var dir int
+			switch c.dir {
+			case MoveLeft:
+				dir = MoveUp
+			case MoveRight:
+				dir = MoveDown
+			case MoveUp:
+				dir = MoveRight
+			case MoveDown:
+				dir = MoveLeft
+			}
+			event <- Event{
+				ID:        c.ID(),
+				Type:      "move",
+				Direction: dir,
+			}
+		case <-c.done:
+			return
 		}
 	}
 }
@@ -73,70 +91,54 @@ func (c *RandomClient) getNextCell() (int, int) {
 
 func NewRandomClient(id, w, h int) (*RandomClient, error) {
 	stream := make(chan int)
-	return &RandomClient{
+	doneStream := make(chan int)
+	client := &RandomClient{
 		id:        id,
 		width:     w,
 		height:    h,
 		forceTurn: stream,
-	}, nil
-}
-
-func NewCuiClient(id, w, h int) (*CuiClient, error) {
-	board, err := NewCuiBoard(w, h)
-	if err != nil {
-		return nil, err
+		done:      doneStream,
 	}
-	return &CuiClient{
-		id:    id,
-		board: board,
-	}, nil
+	return client, nil
 }
 
-type CuiClient struct {
-	id    int
-	board *CuiBoard
+type GameClient struct {
+	id           int
+	ingameClient *CuiClient
+	board        *CuiBoard
+	event        chan Event
 }
 
-func (c *CuiClient) ID() int {
-	return c.id
-}
-
-func (c *CuiClient) Update(x, y, size, dir int, board [][]int) {
-	c.board.Draw(board)
-}
-
-func (c *CuiClient) Run(event chan<- Event) {
+func (c *GameClient) Run() {
 	for {
 		ev := c.board.s.PollEvent()
-
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			c.board.s.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				c.board.s.Fini()
-				event <- Event{Type: "quit"}
+				c.event <- Event{Type: "quit"}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
-				event <- Event{
-					ID:        c.ID(),
+				c.event <- Event{
+					ID:        c.id,
 					Type:      "move",
 					Direction: MoveLeft,
 				}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
-				event <- Event{
-					ID:        c.ID(),
+				c.event <- Event{
+					ID:        c.id,
 					Type:      "move",
 					Direction: MoveRight,
 				}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
-				event <- Event{
-					ID:        c.ID(),
+				c.event <- Event{
+					ID:        c.id,
 					Type:      "move",
 					Direction: MoveUp,
 				}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
-				event <- Event{
-					ID:        c.ID(),
+				c.event <- Event{
+					ID:        c.id,
 					Type:      "move",
 					Direction: MoveDown,
 				}
@@ -145,9 +147,95 @@ func (c *CuiClient) Run(event chan<- Event) {
 	}
 }
 
-func (c *CuiClient) Finish() {
+func NewGameClient(id, w, h int) (*GameClient, error) {
+	board, err := NewCuiBoard(w, h)
+	if err != nil {
+		return nil, err
+	}
+	done := make(chan int)
+	event := make(chan Event)
+	ingame := &CuiClient{
+		id:         id,
+		state:      "alive",
+		board:      board,
+		controller: event,
+		done:       done,
+	}
+	client := &GameClient{
+		id:           id,
+		ingameClient: ingame,
+		board:        board,
+		event:        event,
+	}
+	return client, nil
+}
+
+func (c *GameClient) Finish() {
+	logger.Printf("GameClient.Finish")
 	c.board.s.Fini()
 }
+
+func (c *GameClient) NewIngameClient() *CuiClient {
+	done := make(chan int)
+	client := &CuiClient{
+		id:         c.id,
+		state:      "alive",
+		board:      c.board,
+		controller: c.event,
+		done:       done,
+	}
+	c.ingameClient = client
+	return client
+}
+
+func NewCuiClient(id, w, h int) (*CuiClient, error) {
+	board, err := NewCuiBoard(w, h)
+	if err != nil {
+		return nil, err
+	}
+	client := &CuiClient{
+		id:    id,
+		state: "alive",
+		board: board,
+	}
+	return client, nil
+}
+
+type CuiClient struct {
+	id         int
+	state      string
+	board      *CuiBoard
+	controller <-chan Event
+	done       chan int
+}
+
+func (c *CuiClient) ID() int {
+	return c.id
+}
+
+func (c *CuiClient) Update(x, y, size, dir int, state string, board [][]int) {
+	c.state = state
+	c.board.Draw(board, size)
+}
+
+func (c *CuiClient) Run(event chan<- Event) {
+	for {
+		select {
+		case <-c.done:
+			return
+		case ev := <-c.controller:
+			event <- ev
+		}
+	}
+}
+
+func (c *CuiClient) Finish() {
+	logger.Printf("CuiClient.Finish")
+	c.done <- 1
+	c.board.Reset()
+}
+
+func (c *CuiClient) Quit() {}
 
 type CuiBoard struct {
 	s      tcell.Screen
@@ -181,7 +269,22 @@ func NewCuiBoard(w, h int) (*CuiBoard, error) {
 	}, nil
 }
 
-func (b *CuiBoard) Draw(board [][]int) {
+func (b *CuiBoard) Reset() {
+	board := make([][]int, b.height)
+	for i := range board {
+		board[i] = make([]int, b.width)
+	}
+	b.Draw(board, 0)
+}
+
+func (b *CuiBoard) InsertWord(x, y int, str string) {
+	style := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+	for i, s := range str {
+		b.s.SetContent(x+i, y, s, nil, style)
+	}
+}
+
+func (b *CuiBoard) Draw(board [][]int, size int) {
 	width := len(board[0])
 	height := len(board)
 	b.s.Clear()
@@ -218,13 +321,7 @@ func (b *CuiBoard) Draw(board [][]int) {
 	b.s.SetContent(0, height+1, tcell.RuneLLCorner, nil, defStyle)
 	b.s.SetContent(width+2, 0, tcell.RuneURCorner, nil, defStyle)
 	b.s.SetContent(width+2, b.height+1, tcell.RuneLRCorner, nil, defStyle)
+	b.InsertWord(width+4, 3, fmt.Sprintf("Score: %d", size))
 
 	b.s.Show()
 }
-
-// func (b *CuiBoard) drawBoard() {
-// 	for _, row := range b.board {
-// 		logger.Printf("%v", row)
-// 	}
-// 	logger.Println("")
-// }
