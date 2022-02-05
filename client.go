@@ -152,15 +152,8 @@ func NewGameClient(id, w, h int) (*GameClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	done := make(chan int)
 	event := make(chan Event)
-	ingame := &CuiClient{
-		id:         id,
-		state:      "alive",
-		board:      board,
-		controller: event,
-		done:       done,
-	}
+	ingame := newCuiClient(id, event, board)
 	client := &GameClient{
 		id:           id,
 		ingameClient: ingame,
@@ -176,29 +169,20 @@ func (c *GameClient) Finish() {
 }
 
 func (c *GameClient) NewIngameClient() *CuiClient {
-	done := make(chan int)
-	client := &CuiClient{
-		id:         c.id,
-		state:      "alive",
-		board:      c.board,
-		controller: c.event,
-		done:       done,
-	}
+	client := newCuiClient(c.id, c.event, c.board)
 	c.ingameClient = client
 	return client
 }
 
-func NewCuiClient(id, w, h int) (*CuiClient, error) {
-	board, err := NewCuiBoard(w, h)
-	if err != nil {
-		return nil, err
+func newCuiClient(id int, event <-chan Event, board *CuiBoard) *CuiClient {
+	done := make(chan int)
+	return &CuiClient{
+		id:         id,
+		state:      "alive",
+		board:      board,
+		controller: event,
+		done:       done,
 	}
-	client := &CuiClient{
-		id:    id,
-		state: "alive",
-		board: board,
-	}
-	return client, nil
 }
 
 type CuiClient struct {

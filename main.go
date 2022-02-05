@@ -331,8 +331,6 @@ func main() {
 	go client.Run()
 	stateMachine := NewGameStateMachine()
 	stateMachine.AddGameClient(client)
-	// d := time.Duration(300) * time.Millisecond
-	// t := time.NewTicker(d)
 	for i := 0; i < 2; i++ {
 		stateMachine.InitUpdate()
 		stateMachine.StartUpdate()
