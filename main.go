@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -11,43 +12,39 @@ func main() {
 		log.Panic(err)
 	}
 	logger = log.New(f, "", log.LstdFlags)
+	d := time.Duration(100) * time.Millisecond
+	t := time.NewTicker(d)
 	defer func() {
 		f.Sync()
 		f.Close()
+		t.Stop()
 	}()
 
 	logger.Printf("========== GAME START ==========")
 	client, _ := NewGameClient(1, 40, 30)
 	stateMachine := NewGameStateMachine(40, 30)
 	stateMachine.AddGameClient(client)
-	for i := 0; i < 5; i++ {
-		stateMachine.InitUpdate()
-		stateMachine.StartUpdate()
-		stateMachine.FinishUpdate()
+
+	for range t.C {
+		logger.Printf("tick")
+		switch stateMachine.gs.State() {
+		case GameInit:
+			stateMachine.InitUpdate()
+		case GameStart:
+			logger.Printf("Stop tick")
+			t.Stop()
+			err := stateMachine.StartUpdate()
+			if err != nil {
+				os.Exit(0)
+			}
+			logger.Printf("Reset tick")
+			t.Reset(d)
+		case GameFinish:
+			logger.Printf("execute finishUpdate")
+			stateMachine.FinishUpdate()
+		}
 	}
 
 	client.Finish()
-
-	/*
-		for range t.C {
-			logger.Printf("tick")
-			switch stateMachine.gs.State() {
-			case GameInit:
-				stateMachine.InitUpdate()
-			case GameStart:
-				logger.Printf("Stop tick")
-				t.Stop()
-				err := stateMachine.StartUpdate()
-				if err != nil {
-					os.Exit(0)
-				}
-				logger.Printf("Reset tick")
-				t.Reset(d)
-			case GameFinish:
-				logger.Printf("execute finishUpdate")
-				stateMachine.FinishUpdate()
-			}
-		}
-	*/
 	logger.Printf("========== GAME FINISH ==========")
 }

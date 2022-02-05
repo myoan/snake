@@ -51,15 +51,10 @@ func (game *GameStateMachine) StartUpdate() error {
 
 func (game *GameStateMachine) FinishUpdate() {
 	logger.Printf("FinishUpdate")
-	game.sm.Run(game.gs.Restart, GameArgument{clients: game.gs.Clients})
-	// logger.Printf("FinishUpdate")
-	// err := game.gs.Game.Start(100)
-	// if err != nil {
-	// 	logger.Printf("[ERROR] %v", err)
-	// 	return
-	// }
-	// game.sm.Run(game.gs.Finish, GameArgument{clients: game.gs.Clients})
-	// logger.Printf("Try to move to Finish")
+	err := game.sm.Run(game.gs.Restart, GameArgument{clients: game.gs.Clients})
+	if err != nil {
+		logger.Printf("[ERROR] %v", err)
+	}
 }
 
 type GameState struct {
@@ -147,7 +142,7 @@ func NewGameStateMachine(w, h int) *GameStateMachine {
 	sm.AddTransition(
 		gs.Restart,
 		stateful.States{GameFinish},
-		stateful.States{GameStart},
+		stateful.States{GameInit},
 	)
 	return &GameStateMachine{
 		gs: gs,
