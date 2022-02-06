@@ -28,7 +28,6 @@ func (game *GameStateMachine) AddGameClient(client *GameClient) {
 }
 
 func (game *GameStateMachine) InitUpdate() {
-	logger.Printf("InitUpdate")
 	// TODO: Add CPU Player
 
 	ingame := game.gc.NewIngameClient(game.gs.Game.FetchEvent())
@@ -40,7 +39,6 @@ func (game *GameStateMachine) InitUpdate() {
 }
 
 func (game *GameStateMachine) StartUpdate(t *time.Ticker) error {
-	logger.Printf("StartUpdate")
 	err := game.gs.Game.Start(t)
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
@@ -51,7 +49,6 @@ func (game *GameStateMachine) StartUpdate(t *time.Ticker) error {
 }
 
 func (game *GameStateMachine) FinishUpdate() {
-	logger.Printf("FinishUpdate")
 	err := game.sm.Run(game.gs.Restart, GameArgument{clients: game.gs.Clients})
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
@@ -82,21 +79,17 @@ func (gs *GameState) AddClient(client Client) {
 }
 
 func (gs *GameState) Start(args stateful.TransitionArguments) (stateful.State, error) {
-	logger.Printf("execute GameState.Start")
 	gargs, ok := args.(GameArgument)
 	if !ok {
 		return nil, errors.New("")
 	}
 	if len(gargs.clients) > 0 {
-		logger.Printf("Phase move to start")
 		return GameStart, nil
 	}
-	logger.Printf("Phase Stay to init")
 	return GameInit, nil
 }
 
 func (gs *GameState) Restart(args stateful.TransitionArguments) (stateful.State, error) {
-	logger.Printf("execute GameState.Restart")
 	_, ok := args.(GameArgument)
 	if !ok {
 		return nil, errors.New("")
@@ -105,17 +98,15 @@ func (gs *GameState) Restart(args stateful.TransitionArguments) (stateful.State,
 }
 
 func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, error) {
-	logger.Printf("execute GameState.Finish")
 	_, ok := args.(GameArgument)
 	if !ok {
 		return nil, errors.New("")
 	}
 
+	logger.Printf("GameState.Finish")
 	if gs.Game.IsFinish() {
-		logger.Printf("Phase move to finish")
 		return GameFinish, nil
 	}
-	logger.Printf("Phase stay to start")
 	return GameStart, nil
 }
 

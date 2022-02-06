@@ -40,11 +40,9 @@ func (c *RandomClient) Update(x, y, size, dir int, state string, board [][]int) 
 }
 
 func (c *RandomClient) Finish() {
-	logger.Printf("RandomClient.Finish")
 	c.done <- 1
 }
 func (c *RandomClient) Quit() {
-	logger.Printf("RandomClient.Quit")
 	c.done <- 1
 }
 func (c *RandomClient) Run(event chan<- Event) {
@@ -164,7 +162,6 @@ func NewGameClient(id, w, h int) (*GameClient, error) {
 }
 
 func (c *GameClient) Finish() {
-	logger.Printf("GameClient.Finish")
 	c.board.s.Fini()
 }
 
@@ -217,12 +214,12 @@ func (c *CuiIngameClient) Run(event chan<- Event) {
 }
 
 func (c *CuiIngameClient) Finish() {
-	logger.Printf("CuiClient.Finish")
 	c.done <- 1
-	c.board.Reset()
 }
 
-func (c *CuiIngameClient) Quit() {}
+func (c *CuiIngameClient) Quit() {
+	c.done <- 1
+}
 
 type CuiBoard struct {
 	s      tcell.Screen
@@ -259,14 +256,6 @@ func (b *CuiBoard) Set(board [][]int) {
 	for y := 0; y < b.height; y++ {
 		for x := 0; x < b.width; x++ {
 			b.board[y][x] = board[y][x]
-		}
-	}
-}
-
-func (b *CuiBoard) Reset() {
-	for y := 0; y < b.height; y++ {
-		for x := 0; x < b.width; x++ {
-			b.board[y][x] = 0
 		}
 	}
 }

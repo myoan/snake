@@ -36,6 +36,16 @@ func NewBoard(w, h int) *Board {
 	}
 }
 
+func (b *Board) Reset() {
+	for y := 0; y < b.height; y++ {
+		for x := 0; x < b.width; x++ {
+			if b.board[y][x] > 0 {
+				b.board[y][x] = 0
+			}
+		}
+	}
+}
+
 type Player struct {
 	State     string
 	size      int
@@ -68,7 +78,7 @@ func (p *Player) Move(board *Board) error {
 
 	nextX := p.x + dx
 	nextY := p.y + dy
-	logger.Printf("%d: (%d, %d) -> (%d, %d)", p.ID(), p.x, p.y, nextX, nextY)
+	// logger.Printf("%d: (%d, %d) -> (%d, %d)", p.ID(), p.x, p.y, nextX, nextY)
 
 	if nextX < 0 || nextX == board.width || nextY < 0 || nextY == board.height {
 		return fmt.Errorf("out of border")
@@ -140,8 +150,12 @@ func NewPlayer(client Client, x, y, size int) *Player {
 	}
 }
 
-func (p *Player) Finish() {
+func (p *Player) Drop() {
 	p.State = "dead"
+}
+
+func (p *Player) Finish() {
+	logger.Printf("Player.Finish")
 	p.Client.Finish()
 }
 
@@ -210,6 +224,7 @@ func (game *Game) FetchEvent() chan<- Event {
 }
 
 func (game *Game) ResetPlayers() {
+	logger.Printf("Game.ResetPlayers")
 	players := make([]*Player, 0)
 	game.Players = players
 }
@@ -227,6 +242,15 @@ func (game *Game) AddPlayer(client Client) {
 		Client:    client,
 	}
 	game.Players = append(game.Players, p)
+}
+
+func (game *Game) DelPlayer(id int) {
+	for _, player := range game.Players {
+		if player.ID() == id {
+			player.Drop()
+			logger.Printf("TODO: Delete player(id: %d)", player.ID())
+		}
+	}
 }
 
 func (game *Game) IsFinish() bool {
@@ -247,6 +271,7 @@ func (game *Game) Start(t *time.Ticker) error {
 				p, err := game.FindPlayerByID(ev.ID)
 				if err != nil {
 					logger.Printf("err: %v", err)
+					return err
 				}
 				p.Quit()
 				return fmt.Errorf("quit")
@@ -259,7 +284,6 @@ func (game *Game) Start(t *time.Ticker) error {
 				if p.State != "alive" {
 					continue
 				}
-				logger.Printf("[id: %d] %d -> %d (up: %d, down: %d, left: %d, right: %d)", p.ID(), p.direction, ev.Direction, MoveUp, MoveDown, MoveLeft, MoveRight)
 
 				// Do not turn around
 				if p.direction == MoveDown && ev.Direction == MoveUp ||
@@ -278,19 +302,12 @@ func (game *Game) Start(t *time.Ticker) error {
 
 				err := p.Move(game.board)
 				if err != nil {
-					p.Finish()
+					game.DelPlayer(p.ID())
+					game.Finish()
+					game.board.Reset()
 					return nil
 				}
 				p.Update(game.board)
-			}
-
-			if game.isFinish() {
-				for _, p := range game.Players {
-					if p.State == "alive" {
-						p.Finish()
-					}
-				}
-				return nil
 			}
 			game.board.Update()
 		}
@@ -309,6 +326,13 @@ func (game *Game) FindPlayerByID(id int) (*Player, error) {
 		}
 	}
 	return nil, fmt.Errorf("Player(id: %d) Not found", id)
+}
+
+func (game *Game) Finish() {
+	logger.Printf("player num: %d", len(game.Players))
+	for _, p := range game.Players {
+		p.Finish()
+	}
 }
 
 func (game *Game) isFinish() bool {

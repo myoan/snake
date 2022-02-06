@@ -33,19 +33,19 @@ func main() {
 	for range t.C {
 		switch stateMachine.gs.State() {
 		case GameInit:
+			logger.Printf("--- GameInit")
 			stateMachine.InitUpdate()
 		case GameStart:
-			logger.Printf("Stop tick")
 			// t.Stop()
+			logger.Printf("--- GameStart")
 			err := stateMachine.StartUpdate(t)
 			if err != nil {
 				client.Finish()
 				os.Exit(0)
 			}
-			logger.Printf("Reset tick")
 			// t.Reset(d)
 		case GameFinish:
-			logger.Printf("execute finishUpdate")
+			logger.Printf("--- GameFinish")
 			stateMachine.FinishUpdate()
 		}
 	}
