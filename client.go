@@ -115,7 +115,10 @@ func (c *GameClient) Run() {
 			c.board.s.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				c.event <- Event{Type: "quit"}
+				c.event <- Event{
+					ID:   c.id,
+					Type: "quit",
+				}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
 				c.event <- Event{
 					ID:        c.id,
@@ -217,7 +220,6 @@ func (c *CuiIngameClient) Finish() {
 	logger.Printf("CuiClient.Finish")
 	c.done <- 1
 	c.board.Reset()
-	c.board.Draw()
 }
 
 func (c *CuiIngameClient) Quit() {}
@@ -239,7 +241,6 @@ func NewCuiBoard(w, h int) (*CuiBoard, error) {
 		logger.Fatalf("%+v", err)
 	}
 	s.SetStyle(defStyle)
-	s.Clear()
 
 	board := make([][]int, h)
 	for i := range board {
@@ -280,10 +281,11 @@ func (b *CuiBoard) InsertWord(x, y int, str string) {
 func (b *CuiBoard) Draw() {
 	width := b.width
 	height := b.height
-	b.s.Clear()
 	snakeStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
 	appleStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+
+	b.s.Clear()
 	for y, row := range b.board {
 		for x, cell := range row {
 			if cell == 0 {
