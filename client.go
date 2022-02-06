@@ -34,7 +34,6 @@ func (c *RandomClient) Update(x, y, size, dir int, state string, board [][]int) 
 
 	nextX, nextY := c.getNextCell()
 	if nextX < 0 || nextX == c.width || nextY < 0 || nextY == c.height {
-		logger.Printf("Enable forceTurn")
 		c.forceTurn <- 1
 	}
 }

@@ -103,7 +103,6 @@ func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, 
 		return nil, errors.New("")
 	}
 
-	logger.Printf("GameState.Finish")
 	if gs.Game.IsFinish() {
 		return GameFinish, nil
 	}

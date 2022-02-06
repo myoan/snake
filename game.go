@@ -155,7 +155,6 @@ func (p *Player) Drop() {
 }
 
 func (p *Player) Finish() {
-	logger.Printf("Player.Finish")
 	p.Client.Finish()
 }
 
