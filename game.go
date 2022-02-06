@@ -68,7 +68,7 @@ func (p *Player) Move(board *Board) error {
 
 	nextX := p.x + dx
 	nextY := p.y + dy
-	logger.Printf("(%d, %d) -> (%d, %d)", p.x, p.y, nextX, nextY)
+	logger.Printf("%d: (%d, %d) -> (%d, %d)", p.ID(), p.x, p.y, nextX, nextY)
 
 	if nextX < 0 || nextX == board.width || nextY < 0 || nextY == board.height {
 		return fmt.Errorf("out of border")
@@ -233,10 +233,7 @@ func (game *Game) IsFinish() bool {
 	return game.isFinish()
 }
 
-func (game *Game) Start(msec int) error {
-	t := time.NewTicker(time.Duration(msec) * time.Millisecond)
-	defer t.Stop()
-
+func (game *Game) Start(t *time.Ticker) error {
 	for _, p := range game.Players {
 		p.GenerateSnake(game.board)
 		p.Update(game.board)
@@ -247,7 +244,10 @@ func (game *Game) Start(msec int) error {
 		case ev := <-game.event:
 			switch ev.Type {
 			case "quit":
-				p, _ := game.FindPlayerByID(ev.ID)
+				p, err := game.FindPlayerByID(ev.ID)
+				if err != nil {
+					logger.Printf("err: %v", err)
+				}
 				p.Quit()
 				return fmt.Errorf("quit")
 			case "move":

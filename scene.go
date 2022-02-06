@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"time"
 
 	"github.com/bykof/stateful"
 )
@@ -38,9 +39,9 @@ func (game *GameStateMachine) InitUpdate() {
 	game.sm.Run(game.gs.Start, GameArgument{clients: game.gs.Clients})
 }
 
-func (game *GameStateMachine) StartUpdate() error {
+func (game *GameStateMachine) StartUpdate(t *time.Ticker) error {
 	logger.Printf("StartUpdate")
-	err := game.gs.Game.Start(100)
+	err := game.gs.Game.Start(t)
 	if err != nil {
 		logger.Printf("[ERROR] %v", err)
 		return err
