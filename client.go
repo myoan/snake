@@ -170,6 +170,10 @@ func (c *GameClient) NewIngameClient(output chan<- Event) *CuiIngameClient {
 	return client
 }
 
+func (c *GameClient) Controller() chan<- Event {
+	return c.event
+}
+
 func newCuiIngameClient(id int, input <-chan Event, output chan<- Event, board *CuiBoard) *CuiIngameClient {
 	done := make(chan int)
 	client := &CuiIngameClient{

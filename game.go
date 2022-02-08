@@ -223,7 +223,6 @@ func (game *Game) FetchEvent() chan<- Event {
 }
 
 func (game *Game) ResetPlayers() {
-	logger.Printf("Game.ResetPlayers")
 	players := make([]*Player, 0)
 	game.Players = players
 }
@@ -253,7 +252,13 @@ func (game *Game) DelPlayer(id int) {
 }
 
 func (game *Game) IsFinish() bool {
-	return game.isFinish()
+	for _, p := range game.Players {
+		if p.State == "alive" {
+			return false
+		}
+	}
+	logger.Printf("--- Game finished ---")
+	return true
 }
 
 func (game *Game) Start(t *time.Ticker) error {
@@ -302,20 +307,23 @@ func (game *Game) Start(t *time.Ticker) error {
 				err := p.Move(game.board)
 				if err != nil {
 					game.DelPlayer(p.ID())
-					game.Finish()
+
+					// TODO: playerが1人なので失敗 = ゲーム終了だが複数人プレイを実装したら、最後の一人になるまでゲームは終了しない
+					logger.Printf("player num: %d", len(game.Players))
+					for _, p := range game.Players {
+						p.Finish()
+					}
+
 					game.board.Reset()
 					return nil
 				}
-				p.Update(game.board)
 			}
 			game.board.Update()
+			for _, p := range game.Players {
+				p.Update(game.board)
+			}
 		}
 	}
-}
-
-func (game *Game) Reset() {
-	players := make([]*Player, 0, 1)
-	game.Players = players
 }
 
 func (game *Game) FindPlayerByID(id int) (*Player, error) {
@@ -325,21 +333,4 @@ func (game *Game) FindPlayerByID(id int) (*Player, error) {
 		}
 	}
 	return nil, fmt.Errorf("Player(id: %d) Not found", id)
-}
-
-func (game *Game) Finish() {
-	logger.Printf("player num: %d", len(game.Players))
-	for _, p := range game.Players {
-		p.Finish()
-	}
-}
-
-func (game *Game) isFinish() bool {
-	for _, p := range game.Players {
-		if p.State == "alive" {
-			return false
-		}
-	}
-	logger.Printf("--- Game is finish ---")
-	return true
 }

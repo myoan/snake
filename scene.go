@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"math/rand"
 	"time"
 
 	"github.com/bykof/stateful"
@@ -12,6 +13,140 @@ const (
 	GameStart  = stateful.DefaultState("start")
 	GameFinish = stateful.DefaultState("finish")
 )
+
+type Input struct {
+	KeyEsc bool
+	KeyA   bool
+	KeyD   bool
+	KeyQ   bool
+	KeyS   bool
+	KeyW   bool
+}
+
+func (input *Input) reset() {
+	logger.Printf("reset all")
+	input.KeyEsc = false
+	input.KeyA = false
+	input.KeyS = false
+	input.KeyW = false
+	input.KeyD = false
+}
+
+func (input *Input) Run(event <-chan ControlEvent) {
+	for ev := range event {
+		logger.Printf("set %v", ev)
+		switch ev.id {
+		case 1:
+			input.KeyEsc = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(100))
+				input.KeyEsc = false
+			}()
+		case 2:
+			input.KeyA = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(100))
+				input.KeyA = false
+			}()
+		case 3:
+			input.KeyD = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(100))
+				input.KeyD = false
+			}()
+		case 4:
+			input.KeyW = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(100))
+				input.KeyW = false
+			}()
+		case 5:
+			input.KeyS = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(100))
+				input.KeyS = false
+			}()
+		}
+	}
+}
+
+type IngameScene struct {
+	// game  *Game
+	Input *Input
+	UI    *UserInterface
+	event chan ControlEvent
+}
+
+func NewIngameScene(event chan ControlEvent) *IngameScene {
+	input := &Input{}
+	go input.Run(event)
+	ui := NewUserInterface(event)
+	return &IngameScene{
+		UI:    ui,
+		Input: input,
+		event: event,
+	}
+}
+
+type LocalGame struct {
+	board *Board
+	event chan Event
+	p     *Player
+}
+
+func (scene *IngameScene) Start(w, h int, client Client) {
+	board := NewBoard(w, h)
+	board.GenerateApple()
+
+	event := make(chan Event)
+
+	game := &LocalGame{
+		board: board,
+		event: event,
+	}
+
+	// Add player
+	x := rand.Intn(game.board.width)
+	y := rand.Intn(game.board.height)
+
+	p := &Player{
+		State:     "alive",
+		x:         x,
+		y:         y,
+		size:      3,
+		direction: rand.Intn(4),
+		Client:    client,
+	}
+
+	game.p = p
+
+	// game := NewGame(w, h)
+	// scene.game = game
+	// for _, p := range game.Players {
+	// 	p.GenerateSnake(game.board)
+	// 	p.Update(game.board)
+	// }
+}
+
+func (scene *IngameScene) Update() {
+	if scene.Input.KeyA {
+		logger.Printf("turn <-")
+	}
+	if scene.Input.KeyD {
+		logger.Printf("turn ->")
+	}
+	if scene.Input.KeyW {
+		logger.Printf("turn ^")
+	}
+	if scene.Input.KeyS {
+		logger.Printf("turn v")
+	}
+	if scene.Input.KeyEsc {
+		logger.Printf("quit")
+	}
+	logger.Printf("Ingame Update")
+	scene.UI.Draw()
+}
 
 type GameArgument struct {
 	clients []Client
@@ -25,34 +160,6 @@ type GameStateMachine struct {
 
 func (game *GameStateMachine) AddGameClient(client *GameClient) {
 	game.gc = client
-}
-
-func (game *GameStateMachine) InitUpdate() {
-	// TODO: Add CPU Player
-
-	ingame := game.gc.NewIngameClient(game.gs.Game.FetchEvent())
-	game.gs.ResetClient()
-	game.gs.AddClient(ingame)
-	game.gs.Game.ResetPlayers()
-	game.gs.Game.AddPlayer(ingame)
-	game.sm.Run(game.gs.Start, GameArgument{clients: game.gs.Clients})
-}
-
-func (game *GameStateMachine) StartUpdate(t *time.Ticker) error {
-	err := game.gs.Game.Start(t)
-	if err != nil {
-		logger.Printf("[ERROR] %v", err)
-		return err
-	}
-	game.sm.Run(game.gs.Finish, GameArgument{clients: game.gs.Clients})
-	return nil
-}
-
-func (game *GameStateMachine) FinishUpdate() {
-	err := game.sm.Run(game.gs.Restart, GameArgument{clients: game.gs.Clients})
-	if err != nil {
-		logger.Printf("[ERROR] %v", err)
-	}
 }
 
 type GameState struct {

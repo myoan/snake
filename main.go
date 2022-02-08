@@ -29,24 +29,57 @@ func main() {
 	client, _ := NewGameClient(1, Width, Height)
 	stateMachine := NewGameStateMachine(Width, Height)
 	stateMachine.AddGameClient(client)
+	init := true
+	var scene *IngameScene
 
+	i := 0
+	event := make(chan ControlEvent)
 	for range t.C {
 		switch stateMachine.gs.State() {
 		case GameInit:
+			// TODO: ここはいわゆるゲームエンジンとしての設計で良い。つまり、inputは一つだけ
+
 			logger.Printf("--- GameInit")
-			stateMachine.InitUpdate()
+			// TODO: Add CPU Player
+			ingame := stateMachine.gc.NewIngameClient(stateMachine.gs.Game.FetchEvent())
+			stateMachine.gs.ResetClient()
+			stateMachine.gs.AddClient(ingame)
+			stateMachine.gs.Game.ResetPlayers()
+			stateMachine.gs.Game.AddPlayer(ingame)
+			stateMachine.sm.Run(stateMachine.gs.Start, GameArgument{clients: stateMachine.gs.Clients})
 		case GameStart:
-			// t.Stop()
+			// TODO: ここは複数のクライアントが集約するイメージ
 			logger.Printf("--- GameStart")
-			err := stateMachine.StartUpdate(t)
+			if init {
+				scene = NewIngameScene(event)
+				ingame := stateMachine.gc.NewIngameClient(stateMachine.gs.Game.FetchEvent())
+				scene.Start(Width, Height, ingame)
+				init = false
+			}
+			scene.Update()
+
+			/*
+				err := stateMachine.gs.Game.Start(t)
+				if err != nil {
+					logger.Printf("[ERROR] %v", err)
+					client.Finish()
+					os.Exit(0)
+				}
+			*/
+			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{clients: stateMachine.gs.Clients})
+			if i > 50 {
+				client.Finish()
+				os.Exit(0)
+			}
+			i++
+		case GameFinish:
+			logger.Printf("--- GameFinish")
+
+			err := stateMachine.sm.Run(stateMachine.gs.Restart, GameArgument{clients: stateMachine.gs.Clients})
 			if err != nil {
 				client.Finish()
 				os.Exit(0)
 			}
-			// t.Reset(d)
-		case GameFinish:
-			logger.Printf("--- GameFinish")
-			stateMachine.FinishUpdate()
 		}
 	}
 
