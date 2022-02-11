@@ -32,7 +32,6 @@ func main() {
 	init := true
 	var scene *IngameScene
 
-	i := 0
 	event := make(chan ControlEvent)
 	for range t.C {
 		switch stateMachine.gs.State() {
@@ -56,22 +55,13 @@ func main() {
 				scene.Start(Width, Height, ingame)
 				init = false
 			}
-			scene.Update()
-
-			/*
-				err := stateMachine.gs.Game.Start(t)
-				if err != nil {
-					logger.Printf("[ERROR] %v", err)
-					client.Finish()
-					os.Exit(0)
-				}
-			*/
-			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{clients: stateMachine.gs.Clients})
-			if i > 50 {
+			err := scene.Update()
+			if err != nil {
 				client.Finish()
 				os.Exit(0)
 			}
-			i++
+
+			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{clients: stateMachine.gs.Clients})
 		case GameFinish:
 			logger.Printf("--- GameFinish")
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -94,20 +95,22 @@ type LocalGame struct {
 	p     *Player
 }
 
+var localGame *LocalGame
+
 func (scene *IngameScene) Start(w, h int, client Client) {
 	board := NewBoard(w, h)
 	board.GenerateApple()
 
 	event := make(chan Event)
 
-	game := &LocalGame{
+	localGame = &LocalGame{
 		board: board,
 		event: event,
 	}
 
 	// Add player
-	x := rand.Intn(game.board.width)
-	y := rand.Intn(game.board.height)
+	x := rand.Intn(localGame.board.width)
+	y := rand.Intn(localGame.board.height)
 
 	p := &Player{
 		State:     "alive",
@@ -118,34 +121,62 @@ func (scene *IngameScene) Start(w, h int, client Client) {
 		Client:    client,
 	}
 
-	game.p = p
+	localGame.p = p
 
-	// game := NewGame(w, h)
-	// scene.game = game
-	// for _, p := range game.Players {
-	// 	p.GenerateSnake(game.board)
-	// 	p.Update(game.board)
-	// }
+	p.GenerateSnake(localGame.board)
+	p.Update(localGame.board)
 }
 
-func (scene *IngameScene) Update() {
+func changeDirection(p *Player, direction int) error {
+	if p.State != "alive" {
+		return nil
+	}
+
+	// Do not turn around
+	if p.direction == MoveDown && direction == MoveUp ||
+		p.direction == MoveUp && direction == MoveDown ||
+		p.direction == MoveLeft && direction == MoveRight ||
+		p.direction == MoveRight && direction == MoveLeft {
+		return nil
+	}
+	p.direction = direction
+	return nil
+}
+
+func (scene *IngameScene) Update() error {
+	p := localGame.p
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
+		changeDirection(p, MoveLeft)
 	}
 	if scene.Input.KeyD {
 		logger.Printf("turn ->")
+		changeDirection(p, MoveRight)
 	}
 	if scene.Input.KeyW {
 		logger.Printf("turn ^")
+		changeDirection(p, MoveUp)
 	}
 	if scene.Input.KeyS {
 		logger.Printf("turn v")
+		changeDirection(p, MoveDown)
 	}
 	if scene.Input.KeyEsc {
 		logger.Printf("quit")
+		p.Quit()
+		return fmt.Errorf("quit")
 	}
 	logger.Printf("Ingame Update")
-	scene.UI.Draw()
+
+	err := p.Move(localGame.board)
+	if err != nil {
+		p.Drop()
+		localGame.board.Reset()
+		return nil
+	}
+	localGame.board.Update()
+	scene.UI.Draw(localGame.board)
+	return nil
 }
 
 type GameArgument struct {
