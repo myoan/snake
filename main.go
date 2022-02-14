@@ -11,6 +11,11 @@ const (
 	Width    = 80
 	Height   = 30
 	interval = 100
+
+	StatusInit = iota
+	StatusStart
+	StatusFinish
+	StatusQuit
 )
 
 func main() {
@@ -34,8 +39,6 @@ func main() {
 	var scene *IngameScene
 
 	event := make(chan ControlEvent)
-	var isQuit = false
-	var isFinish = false
 	scene = NewIngameScene(event)
 Loop:
 	for range t.C {
@@ -45,36 +48,31 @@ Loop:
 
 			logger.Printf("--- GameInit(%d)", runtime.NumGoroutine())
 			// TODO: Add CPU Player
-			scene.Start(Width, Height)
-			stateMachine.sm.Run(stateMachine.gs.Start, GameArgument{clients: stateMachine.gs.Clients, isFinish: false, isQuit: isQuit})
+			args := IngameSceneStartArgs{
+				width:  Width,
+				height: Height,
+			}
+			scene.Start(args)
+			stateMachine.sm.Run(stateMachine.gs.Start, GameArgument{scene: scene, status: StatusInit})
 		case GameStart:
 			// ここは複数のクライアントが集約するイメージ
 			logger.Printf("--- GameStart(%d)", runtime.NumGoroutine())
-			err := scene.Update()
-			if err == ErrIngameHitWall {
-				isFinish = true
-			} else if err == ErrIngameQuited {
-				isQuit = true
+			err, status := scene.Update(nil)
+			if err == ErrIngameQuited {
 				break Loop
 			}
 
-			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{clients: stateMachine.gs.Clients, isFinish: isFinish, isQuit: isQuit})
+			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{scene: scene, status: status})
 		case GameFinish:
 			logger.Printf("--- GameFinish(%d)", runtime.NumGoroutine())
-			scene.Finish()
-			isFinish = false
+			scene.Finish(nil)
 
-			if isQuit {
-				break Loop
-			}
-
-			err := stateMachine.sm.Run(stateMachine.gs.Restart, GameArgument{clients: stateMachine.gs.Clients, isFinish: isQuit})
+			err := stateMachine.sm.Run(stateMachine.gs.Restart, GameArgument{scene: scene, status: StatusFinish})
 			if err != nil {
 				break Loop
 			}
 		}
 	}
-	scene.Finish()
 	client.Finish()
 	scene.UI.Finish()
 

@@ -20,6 +20,16 @@ var (
 
 var localGame *LocalGame
 
+type Scene interface {
+	Start(args interface{})
+	Update(args interface{}) (error, int)
+	Finish(args interface{})
+}
+
+type IngameSceneStartArgs struct {
+	width  int
+	height int
+}
 type IngameScene struct {
 	// game  *Game
 	Input *Input
@@ -41,8 +51,9 @@ func NewIngameScene(event chan ControlEvent) *IngameScene {
 	}
 }
 
-func (scene *IngameScene) Start(w, h int) {
-	board := NewBoard(w, h)
+func (scene *IngameScene) Start(args interface{}) {
+	sargs := args.(IngameSceneStartArgs)
+	board := NewBoard(sargs.width, sargs.height)
 	board.GenerateApple()
 
 	event := make(chan Event)
@@ -50,8 +61,8 @@ func (scene *IngameScene) Start(w, h int) {
 	localGame = &LocalGame{
 		board:     board,
 		event:     event,
-		x:         rand.Intn(w),
-		y:         rand.Intn(h),
+		x:         rand.Intn(sargs.width),
+		y:         rand.Intn(sargs.height),
 		size:      3,
 		direction: rand.Intn(4),
 	}
@@ -59,7 +70,7 @@ func (scene *IngameScene) Start(w, h int) {
 	localGame.GenerateSnake()
 }
 
-func (scene *IngameScene) Update() (error, int) {
+func (scene *IngameScene) Update(args interface{}) (error, int) {
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)
@@ -92,7 +103,7 @@ func (scene *IngameScene) Update() (error, int) {
 	return nil, StatusStart
 }
 
-func (scene *IngameScene) Finish() {}
+func (scene *IngameScene) Finish(args interface{}) {}
 
 type GameArgument struct {
 	clients []Client
@@ -122,14 +133,6 @@ func (gs *GameState) State() stateful.State {
 func (gs *GameState) SetState(state stateful.State) error {
 	gs.state = state
 	return nil
-}
-
-func (gs *GameState) ResetClient() {
-	gs.Clients = make([]Client, 0)
-}
-
-func (gs *GameState) AddClient(client Client) {
-	gs.Clients = append(gs.Clients, client)
 }
 
 func (gs *GameState) Start(args stateful.TransitionArguments) (stateful.State, error) {
