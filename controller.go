@@ -14,7 +14,7 @@ type ControlEvent struct {
 }
 
 func NewUserInterface(event chan<- ControlEvent) *UserInterface {
-	style := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
+	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
 	s, err := tcell.NewScreen()
 	if err != nil {
 		logger.Fatalf("%+v", err)
@@ -22,7 +22,7 @@ func NewUserInterface(event chan<- ControlEvent) *UserInterface {
 	if err := s.Init(); err != nil {
 		logger.Fatalf("%+v", err)
 	}
-	s.SetStyle(style)
+	s.SetStyle(defStyle)
 
 	ui := &UserInterface{screen: s}
 	go ui.RunController(event)
@@ -51,6 +51,10 @@ func (ui *UserInterface) RunController(event chan<- ControlEvent) {
 			}
 		}
 	}
+}
+
+func (ui *UserInterface) Finish() {
+	ui.screen.Fini()
 }
 
 func (ui *UserInterface) Draw(b *Board) {

@@ -3,12 +3,14 @@ package main
 import (
 	"log"
 	"os"
+	"runtime"
 	"time"
 )
 
 const (
-	Width  = 40
-	Height = 30
+	Width    = 80
+	Height   = 30
+	interval = 100
 )
 
 func main() {
@@ -17,7 +19,7 @@ func main() {
 		log.Panic(err)
 	}
 	logger = log.New(f, "", log.LstdFlags)
-	d := time.Duration(100) * time.Millisecond
+	d := time.Duration(interval) * time.Millisecond
 	t := time.NewTicker(d)
 	defer func() {
 		f.Sync()
@@ -29,50 +31,52 @@ func main() {
 	client, _ := NewGameClient(1, Width, Height)
 	stateMachine := NewGameStateMachine(Width, Height)
 	stateMachine.AddGameClient(client)
-	init := true
 	var scene *IngameScene
 
 	event := make(chan ControlEvent)
+	var isQuit = false
+	var isFinish = false
+	scene = NewIngameScene(event)
+Loop:
 	for range t.C {
 		switch stateMachine.gs.State() {
 		case GameInit:
-			// TODO: ここはいわゆるゲームエンジンとしての設計で良い。つまり、inputは一つだけ
+			// ここはいわゆるゲームエンジンとしての設計で良い。つまり、inputは一つだけ
 
-			logger.Printf("--- GameInit")
+			logger.Printf("--- GameInit(%d)", runtime.NumGoroutine())
 			// TODO: Add CPU Player
-			ingame := stateMachine.gc.NewIngameClient(stateMachine.gs.Game.FetchEvent())
-			stateMachine.gs.ResetClient()
-			stateMachine.gs.AddClient(ingame)
-			stateMachine.gs.Game.ResetPlayers()
-			stateMachine.gs.Game.AddPlayer(ingame)
-			stateMachine.sm.Run(stateMachine.gs.Start, GameArgument{clients: stateMachine.gs.Clients})
+			scene.Start(Width, Height, scene.Client())
+			stateMachine.sm.Run(stateMachine.gs.Start, GameArgument{clients: stateMachine.gs.Clients, isFinish: false, isQuit: isQuit})
 		case GameStart:
-			// TODO: ここは複数のクライアントが集約するイメージ
-			logger.Printf("--- GameStart")
-			if init {
-				scene = NewIngameScene(event)
-				ingame := stateMachine.gc.NewIngameClient(stateMachine.gs.Game.FetchEvent())
-				scene.Start(Width, Height, ingame)
-				init = false
-			}
+			// ここは複数のクライアントが集約するイメージ
+			logger.Printf("--- GameStart(%d)", runtime.NumGoroutine())
 			err := scene.Update()
-			if err != nil {
-				client.Finish()
-				os.Exit(0)
+			if err == ErrIngameHitWall {
+				isFinish = true
+			} else if err == ErrIngameQuited {
+				isQuit = true
+				break Loop
 			}
 
-			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{clients: stateMachine.gs.Clients})
+			stateMachine.sm.Run(stateMachine.gs.Finish, GameArgument{clients: stateMachine.gs.Clients, isFinish: isFinish, isQuit: isQuit})
 		case GameFinish:
-			logger.Printf("--- GameFinish")
+			logger.Printf("--- GameFinish(%d)", runtime.NumGoroutine())
+			scene.Finish()
+			isFinish = false
 
-			err := stateMachine.sm.Run(stateMachine.gs.Restart, GameArgument{clients: stateMachine.gs.Clients})
+			if isQuit {
+				break Loop
+			}
+
+			err := stateMachine.sm.Run(stateMachine.gs.Restart, GameArgument{clients: stateMachine.gs.Clients, isFinish: isQuit})
 			if err != nil {
-				client.Finish()
-				os.Exit(0)
+				break Loop
 			}
 		}
 	}
-
+	scene.Finish()
 	client.Finish()
+	scene.UI.Finish()
+
 	logger.Printf("========== GAME FINISH ==========")
 }

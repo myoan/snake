@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -14,6 +13,13 @@ const (
 	GameStart  = stateful.DefaultState("start")
 	GameFinish = stateful.DefaultState("finish")
 )
+
+var (
+	ErrIngameHitWall = errors.New("ingame hit wall")
+	ErrIngameQuited  = errors.New("ingame quited")
+)
+
+var localGame *LocalGame
 
 type Input struct {
 	KeyEsc bool
@@ -35,36 +41,36 @@ func (input *Input) reset() {
 
 func (input *Input) Run(event <-chan ControlEvent) {
 	for ev := range event {
-		logger.Printf("set %v", ev)
+		logger.Printf("receive event %v", ev)
 		switch ev.id {
 		case 1:
 			input.KeyEsc = true
 			go func() {
-				time.Sleep(time.Millisecond * time.Duration(100))
+				time.Sleep(time.Millisecond * time.Duration(interval))
 				input.KeyEsc = false
 			}()
 		case 2:
 			input.KeyA = true
 			go func() {
-				time.Sleep(time.Millisecond * time.Duration(100))
+				time.Sleep(time.Millisecond * time.Duration(interval))
 				input.KeyA = false
 			}()
 		case 3:
 			input.KeyD = true
 			go func() {
-				time.Sleep(time.Millisecond * time.Duration(100))
+				time.Sleep(time.Millisecond * time.Duration(interval))
 				input.KeyD = false
 			}()
 		case 4:
 			input.KeyW = true
 			go func() {
-				time.Sleep(time.Millisecond * time.Duration(100))
+				time.Sleep(time.Millisecond * time.Duration(interval))
 				input.KeyW = false
 			}()
 		case 5:
 			input.KeyS = true
 			go func() {
-				time.Sleep(time.Millisecond * time.Duration(100))
+				time.Sleep(time.Millisecond * time.Duration(interval))
 				input.KeyS = false
 			}()
 		}
@@ -76,6 +82,10 @@ type IngameScene struct {
 	Input *Input
 	UI    *UserInterface
 	event chan ControlEvent
+}
+
+func (scene *IngameScene) Client() Client {
+	return &localClient{}
 }
 
 func NewIngameScene(event chan ControlEvent) *IngameScene {
@@ -94,8 +104,6 @@ type LocalGame struct {
 	event chan Event
 	p     *Player
 }
-
-var localGame *LocalGame
 
 func (scene *IngameScene) Start(w, h int, client Client) {
 	board := NewBoard(w, h)
@@ -164,7 +172,7 @@ func (scene *IngameScene) Update() error {
 	if scene.Input.KeyEsc {
 		logger.Printf("quit")
 		p.Quit()
-		return fmt.Errorf("quit")
+		return ErrIngameQuited
 	}
 	logger.Printf("Ingame Update")
 
@@ -172,15 +180,19 @@ func (scene *IngameScene) Update() error {
 	if err != nil {
 		p.Drop()
 		localGame.board.Reset()
-		return nil
+		return ErrIngameHitWall
 	}
 	localGame.board.Update()
 	scene.UI.Draw(localGame.board)
 	return nil
 }
 
+func (scene *IngameScene) Finish() {}
+
 type GameArgument struct {
-	clients []Client
+	clients  []Client
+	isFinish bool
+	isQuit   bool
 }
 
 type GameStateMachine struct {
@@ -195,7 +207,6 @@ func (game *GameStateMachine) AddGameClient(client *GameClient) {
 
 type GameState struct {
 	state   stateful.State
-	Game    *Game
 	Clients []Client
 }
 
@@ -217,42 +228,44 @@ func (gs *GameState) AddClient(client Client) {
 }
 
 func (gs *GameState) Start(args stateful.TransitionArguments) (stateful.State, error) {
+	_, ok := args.(GameArgument)
+	if !ok {
+		return nil, errors.New("")
+	}
+	// if len(gargs.clients) >= 0 {
+	// 	return GameStart, nil
+	// }
+	// return GameInit, nil
+	return GameStart, nil
+}
+
+func (gs *GameState) Restart(args stateful.TransitionArguments) (stateful.State, error) {
 	gargs, ok := args.(GameArgument)
 	if !ok {
 		return nil, errors.New("")
 	}
-	if len(gargs.clients) > 0 {
-		return GameStart, nil
-	}
-	return GameInit, nil
-}
-
-func (gs *GameState) Restart(args stateful.TransitionArguments) (stateful.State, error) {
-	_, ok := args.(GameArgument)
-	if !ok {
-		return nil, errors.New("")
+	if gargs.isQuit {
+		return GameFinish, nil
 	}
 	return GameInit, nil
 }
 
 func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, error) {
-	_, ok := args.(GameArgument)
+	gargs, ok := args.(GameArgument)
 	if !ok {
 		return nil, errors.New("")
 	}
-
-	if gs.Game.IsFinish() {
+	if gargs.isFinish {
 		return GameFinish, nil
 	}
+
 	return GameStart, nil
 }
 
 func NewGameStateMachine(w, h int) *GameStateMachine {
-	game := NewGame(w, h)
 	clients := make([]Client, 0)
 	gs := &GameState{
 		state:   GameInit,
-		Game:    game,
 		Clients: clients,
 	}
 	sm := &stateful.StateMachine{
