@@ -97,6 +97,14 @@ func (ui *UserInterface) Draw(b *Board) {
 	ui.screen.Show()
 }
 
+func (ui *UserInterface) DrawMenu() {
+	style := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+	ui.screen.SetContent(0, 10, 'm', nil, style)
+	ui.screen.SetContent(1, 10, 'e', nil, style)
+	ui.screen.SetContent(2, 10, 'n', nil, style)
+	ui.screen.SetContent(3, 10, 'u', nil, style)
+}
+
 func (ui *UserInterface) runController(event chan<- ControlEvent) {
 	for {
 		ev := ui.screen.PollEvent()
@@ -107,7 +115,6 @@ func (ui *UserInterface) runController(event chan<- ControlEvent) {
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				event <- ControlEvent{eventtype: 0, id: 1}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
-				logger.Printf("Push A")
 				event <- ControlEvent{eventtype: 0, id: 2}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
 				event <- ControlEvent{eventtype: 0, id: 3}
@@ -115,6 +122,8 @@ func (ui *UserInterface) runController(event chan<- ControlEvent) {
 				event <- ControlEvent{eventtype: 0, id: 4}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
 				event <- ControlEvent{eventtype: 0, id: 5}
+			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
+				event <- ControlEvent{eventtype: 0, id: 6}
 			}
 		}
 	}
@@ -123,12 +132,13 @@ func (ui *UserInterface) runController(event chan<- ControlEvent) {
 // Input represents the user input.
 
 type Input struct {
-	KeyEsc bool
-	KeyA   bool
-	KeyD   bool
-	KeyQ   bool
-	KeyS   bool
-	KeyW   bool
+	KeyEsc   bool
+	KeyA     bool
+	KeyD     bool
+	KeyQ     bool
+	KeyS     bool
+	KeyW     bool
+	KeySpace bool
 }
 
 func NewInput(event chan ControlEvent) *Input {
@@ -144,6 +154,7 @@ func (input *Input) reset() {
 	input.KeyS = false
 	input.KeyW = false
 	input.KeyD = false
+	input.KeySpace = false
 }
 
 func (input *Input) run(event <-chan ControlEvent) {
@@ -179,6 +190,12 @@ func (input *Input) run(event <-chan ControlEvent) {
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
 				input.KeyS = false
+			}()
+		case 6:
+			input.KeySpace = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(interval))
+				input.KeySpace = false
 			}()
 		}
 	}

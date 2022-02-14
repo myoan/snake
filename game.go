@@ -85,6 +85,8 @@ type Event struct {
 	Direction int
 }
 
+var localGame *LocalGame
+
 // LocalGame manages the board informations, user status and game logic.
 // This game is for single-player, so LocalGame manage player's event.
 type LocalGame struct {

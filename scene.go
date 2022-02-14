@@ -2,15 +2,9 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
-
-	"github.com/bykof/stateful"
-)
-
-const (
-	GameInit   = stateful.DefaultState("init")
-	GameStart  = stateful.DefaultState("start")
-	GameFinish = stateful.DefaultState("finish")
+	"time"
 )
 
 var (
@@ -18,12 +12,106 @@ var (
 	ErrIngameQuited  = errors.New("ingame quited")
 )
 
-var localGame *LocalGame
+type SceneType int
+
+const (
+	SceneTypeMenu SceneType = iota
+	SceneTypeIngame
+)
+
+func NewSceneManager() *SceneManager {
+	scenes := make(map[SceneType]Scene)
+	return &SceneManager{scenes: scenes}
+}
+
+// SceneManager manages every scenes
+// You must set all scenes and transitions before start
+type SceneManager struct {
+	scenes           map[SceneType]Scene
+	currentSceneType SceneType
+	currentScene     Scene
+}
+
+// Execute executes the state machine
+func (mng *SceneManager) Execute() error {
+	t := time.NewTicker(100 * time.Millisecond)
+	mng.currentScene.Start()
+	for range t.C {
+		stype, err := mng.currentScene.Update()
+		if err != nil {
+			return err
+		}
+		if stype != mng.currentSceneType {
+			mng.MoveTo(stype)
+		}
+	}
+	mng.currentScene.Finish()
+	return nil
+}
+
+func (mng *SceneManager) Stop() {
+	fmt.Println("stop")
+}
+
+func (mng *SceneManager) SetFirstScene(ty SceneType) {
+	mng.currentSceneType = ty
+	mng.currentScene = mng.scenes[ty]
+}
+func (mng *SceneManager) AddScene(ty SceneType, scene Scene) {
+	mng.scenes[ty] = scene
+}
+
+// MoveTo changes current scene
+func (mng *SceneManager) MoveTo(ty SceneType) error {
+	scene := mng.scenes[ty]
+	if scene == nil {
+		return fmt.Errorf("scene %d not found", ty)
+	}
+	mng.currentScene.Finish()
+	mng.currentScene = scene
+	mng.currentScene.Start()
+	return nil
+}
 
 type Scene interface {
-	Start(args interface{})
-	Update(args interface{}) (error, int)
-	Finish(args interface{})
+	Start()
+	Update() (SceneType, error)
+	Finish()
+}
+
+type MenuScene struct {
+	Input *Input
+	UI    *UserInterface
+	event chan ControlEvent
+}
+
+func (scene *MenuScene) Start() {
+	logger.Printf("MenuScene Start")
+	scene.UI.DrawMenu()
+}
+func (scene *MenuScene) Finish() {
+	logger.Printf("MenuScene Finish")
+
+}
+func (scene *MenuScene) Update() (SceneType, error) {
+	logger.Printf("MenuScene Update")
+
+	if scene.Input.KeySpace {
+		logger.Printf("push Space")
+		return SceneTypeIngame, nil
+	}
+
+	scene.UI.DrawMenu()
+	return SceneTypeMenu, nil
+}
+
+func NewMenuScene(ui *UserInterface, event chan ControlEvent) *MenuScene {
+	input := NewInput(event)
+	return &MenuScene{
+		UI:    ui,
+		Input: input,
+		event: event,
+	}
 }
 
 type IngameSceneStartArgs struct {
@@ -31,19 +119,13 @@ type IngameSceneStartArgs struct {
 	height int
 }
 type IngameScene struct {
-	// game  *Game
 	Input *Input
 	UI    *UserInterface
 	event chan ControlEvent
 }
 
-func (scene *IngameScene) Client() Client {
-	return &localClient{}
-}
-
-func NewIngameScene(event chan ControlEvent) *IngameScene {
+func NewIngameScene(ui *UserInterface, event chan ControlEvent) *IngameScene {
 	input := NewInput(event)
-	ui := NewUserInterface(event)
 	return &IngameScene{
 		UI:    ui,
 		Input: input,
@@ -51,9 +133,9 @@ func NewIngameScene(event chan ControlEvent) *IngameScene {
 	}
 }
 
-func (scene *IngameScene) Start(args interface{}) {
-	sargs := args.(IngameSceneStartArgs)
-	board := NewBoard(sargs.width, sargs.height)
+func (scene *IngameScene) Start() {
+	// sargs := args.(IngameSceneStartArgs)
+	board := NewBoard(Width, Height)
 	board.GenerateApple()
 
 	event := make(chan Event)
@@ -61,8 +143,8 @@ func (scene *IngameScene) Start(args interface{}) {
 	localGame = &LocalGame{
 		board:     board,
 		event:     event,
-		x:         rand.Intn(sargs.width),
-		y:         rand.Intn(sargs.height),
+		x:         rand.Intn(Width),
+		y:         rand.Intn(Height),
 		size:      3,
 		direction: rand.Intn(4),
 	}
@@ -70,7 +152,7 @@ func (scene *IngameScene) Start(args interface{}) {
 	localGame.GenerateSnake()
 }
 
-func (scene *IngameScene) Update(args interface{}) (error, int) {
+func (scene *IngameScene) Update() (SceneType, error) {
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)
@@ -89,106 +171,18 @@ func (scene *IngameScene) Update(args interface{}) (error, int) {
 	}
 	if scene.Input.KeyEsc {
 		logger.Printf("quit")
-		return ErrIngameQuited, StatusQuit
+		return SceneTypeIngame, ErrIngameQuited
 	}
 	logger.Printf("Ingame Update")
 
 	err := localGame.MovePlayer()
 	if err != nil {
 		localGame.board.Reset()
-		return ErrIngameHitWall, StatusFinish
+		return SceneTypeIngame, ErrIngameHitWall
 	}
 	localGame.board.Update()
 	scene.UI.Draw(localGame.board)
-	return nil, StatusStart
+	return SceneTypeIngame, nil
 }
 
-func (scene *IngameScene) Finish(args interface{}) {}
-
-type GameArgument struct {
-	clients []Client
-	scene   *IngameScene
-	status  int
-}
-
-type GameStateMachine struct {
-	gc *GameClient
-	gs *GameState
-	sm *stateful.StateMachine
-}
-
-func (game *GameStateMachine) AddGameClient(client *GameClient) {
-	game.gc = client
-}
-
-type GameState struct {
-	state   stateful.State
-	Clients []Client
-}
-
-func (gs *GameState) State() stateful.State {
-	return gs.state
-}
-
-func (gs *GameState) SetState(state stateful.State) error {
-	gs.state = state
-	return nil
-}
-
-func (gs *GameState) Start(args stateful.TransitionArguments) (stateful.State, error) {
-	_, ok := args.(GameArgument)
-	if !ok {
-		return nil, errors.New("")
-	}
-	return GameStart, nil
-}
-
-func (gs *GameState) Restart(args stateful.TransitionArguments) (stateful.State, error) {
-	_, ok := args.(GameArgument)
-	if !ok {
-		return nil, errors.New("")
-	}
-	return GameInit, nil
-}
-
-func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, error) {
-	gargs, ok := args.(GameArgument)
-	if !ok {
-		return nil, errors.New("")
-	}
-	if gargs.status == StatusFinish {
-		return GameFinish, nil
-	}
-
-	return GameStart, nil
-}
-
-func NewGameStateMachine(w, h int) *GameStateMachine {
-	clients := make([]Client, 0)
-	gs := &GameState{
-		state:   GameInit,
-		Clients: clients,
-	}
-	sm := &stateful.StateMachine{
-		StatefulObject: gs,
-	}
-	sm.AddTransition(
-		gs.Start,
-		stateful.States{GameInit},
-		stateful.States{GameStart},
-	)
-	sm.AddTransition(
-		gs.Finish,
-		stateful.States{GameStart},
-		stateful.States{GameFinish},
-	)
-	sm.AddTransition(
-		gs.Restart,
-		stateful.States{GameFinish},
-		stateful.States{GameInit},
-	)
-	return &GameStateMachine{
-		gs: gs,
-		sm: sm,
-	}
-}
+func (scene *IngameScene) Finish() {}
