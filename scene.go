@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"math/rand"
-	"time"
 
 	"github.com/bykof/stateful"
 )
@@ -21,62 +20,6 @@ var (
 
 var localGame *LocalGame
 
-type Input struct {
-	KeyEsc bool
-	KeyA   bool
-	KeyD   bool
-	KeyQ   bool
-	KeyS   bool
-	KeyW   bool
-}
-
-func (input *Input) reset() {
-	logger.Printf("reset all")
-	input.KeyEsc = false
-	input.KeyA = false
-	input.KeyS = false
-	input.KeyW = false
-	input.KeyD = false
-}
-
-func (input *Input) Run(event <-chan ControlEvent) {
-	for ev := range event {
-		logger.Printf("receive event %v", ev)
-		switch ev.id {
-		case 1:
-			input.KeyEsc = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyEsc = false
-			}()
-		case 2:
-			input.KeyA = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyA = false
-			}()
-		case 3:
-			input.KeyD = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyD = false
-			}()
-		case 4:
-			input.KeyW = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyW = false
-			}()
-		case 5:
-			input.KeyS = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyS = false
-			}()
-		}
-	}
-}
-
 type IngameScene struct {
 	// game  *Game
 	Input *Input
@@ -89,8 +32,7 @@ func (scene *IngameScene) Client() Client {
 }
 
 func NewIngameScene(event chan ControlEvent) *IngameScene {
-	input := &Input{}
-	go input.Run(event)
+	input := NewInput(event)
 	ui := NewUserInterface(event)
 	return &IngameScene{
 		UI:    ui,
@@ -117,7 +59,7 @@ func (scene *IngameScene) Start(w, h int) {
 	localGame.GenerateSnake()
 }
 
-func (scene *IngameScene) Update() error {
+func (scene *IngameScene) Update() (error, int) {
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)
@@ -136,26 +78,26 @@ func (scene *IngameScene) Update() error {
 	}
 	if scene.Input.KeyEsc {
 		logger.Printf("quit")
-		return ErrIngameQuited
+		return ErrIngameQuited, StatusQuit
 	}
 	logger.Printf("Ingame Update")
 
 	err := localGame.MovePlayer()
 	if err != nil {
 		localGame.board.Reset()
-		return ErrIngameHitWall
+		return ErrIngameHitWall, StatusFinish
 	}
 	localGame.board.Update()
 	scene.UI.Draw(localGame.board)
-	return nil
+	return nil, StatusStart
 }
 
 func (scene *IngameScene) Finish() {}
 
 type GameArgument struct {
-	clients  []Client
-	isFinish bool
-	isQuit   bool
+	clients []Client
+	scene   *IngameScene
+	status  int
 }
 
 type GameStateMachine struct {
@@ -195,20 +137,13 @@ func (gs *GameState) Start(args stateful.TransitionArguments) (stateful.State, e
 	if !ok {
 		return nil, errors.New("")
 	}
-	// if len(gargs.clients) >= 0 {
-	// 	return GameStart, nil
-	// }
-	// return GameInit, nil
 	return GameStart, nil
 }
 
 func (gs *GameState) Restart(args stateful.TransitionArguments) (stateful.State, error) {
-	gargs, ok := args.(GameArgument)
+	_, ok := args.(GameArgument)
 	if !ok {
 		return nil, errors.New("")
-	}
-	if gargs.isQuit {
-		return GameFinish, nil
 	}
 	return GameInit, nil
 }
@@ -218,7 +153,7 @@ func (gs *GameState) Finish(args stateful.TransitionArguments) (stateful.State, 
 	if !ok {
 		return nil, errors.New("")
 	}
-	if gargs.isFinish {
+	if gargs.status == StatusFinish {
 		return GameFinish, nil
 	}
 

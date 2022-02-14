@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -114,6 +116,70 @@ func (ui *UserInterface) runController(event chan<- ControlEvent) {
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
 				event <- ControlEvent{eventtype: 0, id: 5}
 			}
+		}
+	}
+}
+
+// Input represents the user input.
+
+type Input struct {
+	KeyEsc bool
+	KeyA   bool
+	KeyD   bool
+	KeyQ   bool
+	KeyS   bool
+	KeyW   bool
+}
+
+func NewInput(event chan ControlEvent) *Input {
+	input := &Input{}
+	go input.run(event)
+	return input
+}
+
+func (input *Input) reset() {
+	logger.Printf("reset all")
+	input.KeyEsc = false
+	input.KeyA = false
+	input.KeyS = false
+	input.KeyW = false
+	input.KeyD = false
+}
+
+func (input *Input) run(event <-chan ControlEvent) {
+	for ev := range event {
+		logger.Printf("receive event %v", ev)
+		switch ev.id {
+		case 1:
+			input.KeyEsc = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(interval))
+				input.KeyEsc = false
+			}()
+		case 2:
+			input.KeyA = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(interval))
+				input.KeyA = false
+			}()
+		case 3:
+			input.KeyD = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(interval))
+				input.KeyD = false
+			}()
+		case 4:
+			input.KeyW = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(interval))
+				input.KeyW = false
+			}()
+		case 5:
+			input.KeyS = true
+			go func() {
+				time.Sleep(time.Millisecond * time.Duration(interval))
+				input.KeyS = false
+			}()
 		}
 	}
 }
