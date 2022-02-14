@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
-	"time"
 )
 
 const (
@@ -46,6 +44,47 @@ func (b *Board) Reset() {
 	}
 }
 
+func (b *Board) GenerateApple() {
+	for {
+		x := rand.Intn(b.width)
+		y := rand.Intn(b.height)
+
+		if b.GetCell(x, y) == 0 {
+			b.SetCell(x, y, -1)
+			return
+		}
+	}
+}
+
+func (b *Board) Update() {
+	for i := 0; i < b.height; i++ {
+		for j := 0; j < b.width; j++ {
+			if b.board[i][j] > 0 {
+				b.board[i][j]--
+			}
+		}
+	}
+}
+
+func (b *Board) HitApple(x, y int) bool {
+	return b.board[y][x] == -1
+}
+
+func (b *Board) GetCell(x, y int) int {
+	return b.board[y][x]
+}
+
+func (b *Board) SetCell(x, y, data int) {
+	b.board[y][x] = data
+}
+
+type Event struct {
+	ID        int
+	Type      string
+	Direction int
+}
+
+/*
 type Player struct {
 	State     string
 	size      int
@@ -156,46 +195,6 @@ func (p *Player) Drop() {
 
 func (p *Player) Finish() {
 	p.Client.Finish()
-}
-
-func (b *Board) GenerateApple() {
-	for {
-		x := rand.Intn(b.width)
-		y := rand.Intn(b.height)
-
-		if b.GetCell(x, y) == 0 {
-			b.SetCell(x, y, -1)
-			return
-		}
-	}
-}
-
-func (b *Board) Update() {
-	for i := 0; i < b.height; i++ {
-		for j := 0; j < b.width; j++ {
-			if b.board[i][j] > 0 {
-				b.board[i][j]--
-			}
-		}
-	}
-}
-
-func (b *Board) HitApple(x, y int) bool {
-	return b.board[y][x] == -1
-}
-
-func (b *Board) GetCell(x, y int) int {
-	return b.board[y][x]
-}
-
-func (b *Board) SetCell(x, y, data int) {
-	b.board[y][x] = data
-}
-
-type Event struct {
-	ID        int
-	Type      string
-	Direction int
 }
 
 type Game struct {
@@ -334,3 +333,5 @@ func (game *Game) FindPlayerByID(id int) (*Player, error) {
 	}
 	return nil, fmt.Errorf("Player(id: %d) Not found", id)
 }
+
+*/

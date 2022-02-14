@@ -45,7 +45,7 @@ Loop:
 
 			logger.Printf("--- GameInit(%d)", runtime.NumGoroutine())
 			// TODO: Add CPU Player
-			scene.Start(Width, Height, scene.Client())
+			scene.Start(Width, Height)
 			stateMachine.sm.Run(stateMachine.gs.Start, GameArgument{clients: stateMachine.gs.Clients, isFinish: false, isQuit: isQuit})
 		case GameStart:
 			// ここは複数のクライアントが集約するイメージ

@@ -4,6 +4,12 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+/*
+UserInterface represents the user interface, screen and controller.
+This struct must be initialized at the beginning of the program and must live until the end.
+You shouldn't re-create this struct.
+*/
+
 type UserInterface struct {
 	screen tcell.Screen
 }
@@ -13,6 +19,9 @@ type ControlEvent struct {
 	id        int
 }
 
+// NewUserInterface creates a new UserInterface.
+// You must call this method before using the UserInterface.
+// UserInterface is listening user controlle events and sends them to the event channel.
 func NewUserInterface(event chan<- ControlEvent) *UserInterface {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
 	s, err := tcell.NewScreen()
@@ -25,38 +34,20 @@ func NewUserInterface(event chan<- ControlEvent) *UserInterface {
 	s.SetStyle(defStyle)
 
 	ui := &UserInterface{screen: s}
-	go ui.RunController(event)
+	go ui.runController(event)
 
 	return ui
 }
 
-func (ui *UserInterface) RunController(event chan<- ControlEvent) {
-	for {
-		ev := ui.screen.PollEvent()
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			ui.screen.Sync()
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				event <- ControlEvent{eventtype: 0, id: 1}
-			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
-				logger.Printf("Push A")
-				event <- ControlEvent{eventtype: 0, id: 2}
-			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
-				event <- ControlEvent{eventtype: 0, id: 3}
-			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
-				event <- ControlEvent{eventtype: 0, id: 4}
-			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
-				event <- ControlEvent{eventtype: 0, id: 5}
-			}
-		}
-	}
-}
-
+/*
+Finish is called when the entire game is over.
+*/
 func (ui *UserInterface) Finish() {
 	ui.screen.Fini()
 }
 
+// Draw shows the board on the screen.
+// You should call this method periodically.
 func (ui *UserInterface) Draw(b *Board) {
 	ui.screen.Clear()
 	style := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
@@ -102,4 +93,27 @@ func (ui *UserInterface) Draw(b *Board) {
 	// b.InsertWord(width+4, 3, fmt.Sprintf("Score: %d", size))
 
 	ui.screen.Show()
+}
+
+func (ui *UserInterface) runController(event chan<- ControlEvent) {
+	for {
+		ev := ui.screen.PollEvent()
+		switch ev := ev.(type) {
+		case *tcell.EventResize:
+			ui.screen.Sync()
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				event <- ControlEvent{eventtype: 0, id: 1}
+			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
+				logger.Printf("Push A")
+				event <- ControlEvent{eventtype: 0, id: 2}
+			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
+				event <- ControlEvent{eventtype: 0, id: 3}
+			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
+				event <- ControlEvent{eventtype: 0, id: 4}
+			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
+				event <- ControlEvent{eventtype: 0, id: 5}
+			}
+		}
+	}
 }

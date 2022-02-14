@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -99,86 +100,146 @@ func NewIngameScene(event chan ControlEvent) *IngameScene {
 	}
 }
 
-type LocalGame struct {
-	board *Board
-	event chan Event
-	p     *Player
-}
-
-func (scene *IngameScene) Start(w, h int, client Client) {
+func (scene *IngameScene) Start(w, h int) {
 	board := NewBoard(w, h)
 	board.GenerateApple()
 
 	event := make(chan Event)
 
 	localGame = &LocalGame{
-		board: board,
-		event: event,
-	}
-
-	// Add player
-	x := rand.Intn(localGame.board.width)
-	y := rand.Intn(localGame.board.height)
-
-	p := &Player{
-		State:     "alive",
-		x:         x,
-		y:         y,
+		board:     board,
+		event:     event,
+		x:         rand.Intn(w),
+		y:         rand.Intn(h),
 		size:      3,
 		direction: rand.Intn(4),
-		Client:    client,
 	}
 
-	localGame.p = p
-
-	p.GenerateSnake(localGame.board)
-	p.Update(localGame.board)
+	localGame.GenerateSnake()
 }
 
-func changeDirection(p *Player, direction int) error {
-	if p.State != "alive" {
-		return nil
+// LocalGame manages the board informations, user status and game logic.
+// This game is for single-player, so LocalGame manage player's event.
+type LocalGame struct {
+	board     *Board
+	event     chan Event
+	x         int
+	y         int
+	size      int
+	direction int
+}
+
+func (game *LocalGame) GenerateSnake() {
+	logger.Printf("GenerateSnake(%d, %d)", game.x, game.y)
+
+	var dx, dy int
+	switch game.direction {
+	case MoveUp:
+		dx = 0
+		dy = 1
+	case MoveDown:
+		dx = 0
+		dy = -1
+	case MoveLeft:
+		dx = 1
+		dy = 0
+	case MoveRight:
+		dx = -1
+		dy = 0
 	}
 
+	x := game.x
+	y := game.y
+
+	for i := game.size; i >= 0; i-- {
+		game.board.board[y][x] = i
+		if x+dx < 0 || x+dx >= game.board.width {
+			dx = 0
+			dy = 1
+		}
+		if y+dy < 0 || y+dy >= game.board.height {
+			dx = 1
+			dy = 0
+		}
+		x += dx
+		y += dy
+	}
+}
+
+func (game *LocalGame) MovePlayer() error {
+	var dx, dy int
+	switch game.direction {
+	case MoveLeft:
+		dx = -1
+		dy = 0
+	case MoveRight:
+		dx = 1
+		dy = 0
+	case MoveUp:
+		dx = 0
+		dy = -1
+	case MoveDown:
+		dx = 0
+		dy = 1
+	}
+
+	nextX := game.x + dx
+	nextY := game.y + dy
+	// logger.Printf("%d: (%d, %d) -> (%d, %d)", p.ID(), p.x, p.y, nextX, nextY)
+
+	if nextX < 0 || nextX == game.board.width || nextY < 0 || nextY == game.board.height {
+		return fmt.Errorf("out of border")
+	}
+	if game.board.GetCell(nextX, nextY) > 0 {
+		return fmt.Errorf("stamp snake")
+	}
+	if game.board.HitApple(nextX, nextY) {
+		game.board.GenerateApple()
+		game.size++
+	}
+	game.board.SetCell(nextX, nextY, game.size+1)
+	game.x = nextX
+	game.y = nextY
+	return nil
+}
+
+func (game *LocalGame) changeDirection(direction int) error {
 	// Do not turn around
-	if p.direction == MoveDown && direction == MoveUp ||
-		p.direction == MoveUp && direction == MoveDown ||
-		p.direction == MoveLeft && direction == MoveRight ||
-		p.direction == MoveRight && direction == MoveLeft {
+	if game.direction == MoveDown && direction == MoveUp ||
+		game.direction == MoveUp && direction == MoveDown ||
+		game.direction == MoveLeft && direction == MoveRight ||
+		game.direction == MoveRight && direction == MoveLeft {
 		return nil
 	}
-	p.direction = direction
+	game.direction = direction
 	return nil
 }
 
 func (scene *IngameScene) Update() error {
-	p := localGame.p
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
-		changeDirection(p, MoveLeft)
+		localGame.changeDirection(MoveLeft)
 	}
 	if scene.Input.KeyD {
 		logger.Printf("turn ->")
-		changeDirection(p, MoveRight)
+		localGame.changeDirection(MoveRight)
 	}
 	if scene.Input.KeyW {
 		logger.Printf("turn ^")
-		changeDirection(p, MoveUp)
+		localGame.changeDirection(MoveUp)
 	}
 	if scene.Input.KeyS {
 		logger.Printf("turn v")
-		changeDirection(p, MoveDown)
+		localGame.changeDirection(MoveDown)
 	}
 	if scene.Input.KeyEsc {
 		logger.Printf("quit")
-		p.Quit()
 		return ErrIngameQuited
 	}
 	logger.Printf("Ingame Update")
 
-	err := p.Move(localGame.board)
+	err := localGame.MovePlayer()
 	if err != nil {
-		p.Drop()
 		localGame.board.Reset()
 		return ErrIngameHitWall
 	}
