@@ -160,7 +160,6 @@ func (scene *IngameScene) Start() {
 }
 
 func (scene *IngameScene) Update() (SceneType, error) {
-	logger.Printf("IngameScene.Update")
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)

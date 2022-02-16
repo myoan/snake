@@ -162,56 +162,42 @@ func NewInput(event chan ControlEvent) *Input {
 }
 
 func (input *Input) run(event <-chan ControlEvent) {
-	logger.Printf("Input.run")
 	for ev := range event {
-		logger.Printf("receive event %v", ev)
 		switch ev.id {
 		case 1:
-			logger.Printf("push ESC key")
 			input.KeyEsc = true
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
-				logger.Printf("release ESC key")
 				input.KeyEsc = false
 			}()
 		case 2:
-			logger.Printf("push A key")
 			input.KeyA = true
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
-				logger.Printf("release A key")
 				input.KeyA = false
 			}()
 		case 3:
-			logger.Printf("push D key")
 			input.KeyD = true
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
-				logger.Printf("release D key")
 				input.KeyD = false
 			}()
 		case 4:
-			logger.Printf("push W key")
 			input.KeyW = true
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
-				logger.Printf("release W key")
 				input.KeyW = false
 			}()
 		case 5:
-			logger.Printf("push S key")
 			input.KeyS = true
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
-				logger.Printf("release S key")
 				input.KeyS = false
 			}()
 		case 6:
-			logger.Printf("push Space key")
 			input.KeySpace = true
 			go func() {
 				time.Sleep(time.Millisecond * time.Duration(interval))
-				logger.Printf("release Space key")
 				input.KeySpace = false
 			}()
 		}
