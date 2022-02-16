@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	Width    = 80
-	Height   = 30
-	interval = 100
+	Width  = 80
+	Height = 30
 
 	SceneTypeNone engine.SceneType = iota
 	SceneTypeMenu
