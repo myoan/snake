@@ -89,7 +89,6 @@ type Scene interface {
 type MenuScene struct {
 	Input *Input
 	UI    *UserInterface
-	event chan ControlEvent
 }
 
 func (scene *MenuScene) Start() {
@@ -119,12 +118,10 @@ func (scene *MenuScene) Update() (SceneType, error) {
 	return SceneTypeMenu, nil
 }
 
-func NewMenuScene(ui *UserInterface, event chan ControlEvent) *MenuScene {
-	input := NewInput(event)
+func NewMenuScene(ui *UserInterface, input *Input) *MenuScene {
 	return &MenuScene{
 		UI:    ui,
 		Input: input,
-		event: event,
 	}
 }
 
@@ -135,15 +132,12 @@ type IngameSceneStartArgs struct {
 type IngameScene struct {
 	Input *Input
 	UI    *UserInterface
-	event chan ControlEvent
 }
 
-func NewIngameScene(ui *UserInterface, event chan ControlEvent) *IngameScene {
-	input := NewInput(event)
+func NewIngameScene(ui *UserInterface, input *Input) *IngameScene {
 	return &IngameScene{
 		UI:    ui,
 		Input: input,
-		event: event,
 	}
 }
 
@@ -166,6 +160,7 @@ func (scene *IngameScene) Start() {
 }
 
 func (scene *IngameScene) Update() (SceneType, error) {
+	logger.Printf("IngameScene.Update")
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)
@@ -182,7 +177,6 @@ func (scene *IngameScene) Update() (SceneType, error) {
 		logger.Printf("turn v")
 		localGame.changeDirection(MoveDown)
 	}
-	logger.Printf("Ingame Update")
 
 	err := localGame.MovePlayer()
 	if err != nil {

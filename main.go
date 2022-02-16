@@ -29,9 +29,10 @@ func main() {
 	// client, _ := NewGameClient(1, Width, Height)
 
 	event := make(chan ControlEvent)
+	input := NewInput(event)
 	ui := NewUserInterface(event)
-	mng.AddScene(SceneTypeMenu, NewMenuScene(ui, event))
-	mng.AddScene(SceneTypeIngame, NewIngameScene(ui, event))
+	mng.AddScene(SceneTypeMenu, NewMenuScene(ui, input))
+	mng.AddScene(SceneTypeIngame, NewIngameScene(ui, input))
 	mng.SetFirstScene(SceneTypeMenu)
 
 	mng.Execute()
