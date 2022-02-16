@@ -51,48 +51,46 @@ func (ui *UserInterface) Finish() {
 // Draw shows the board on the screen.
 // You should call this method periodically.
 func (ui *UserInterface) Draw(b *Board) {
-	ui.screen.Clear()
-	style := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
-	ui.screen.SetContent(10, 30, tcell.RuneLRCorner, nil, style)
-
-	width := b.width
-	height := b.height
 	snakeStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
 	appleStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+
+	screenWidth, screenHeight := ui.screen.Size()
+
+	originX := (screenWidth - b.width) / 2
+	originY := (screenHeight - b.height) / 2
 
 	ui.screen.Clear()
 	for y, row := range b.board {
 		for x, cell := range row {
 			if cell == 0 {
 				// Empty
-				ui.screen.SetContent(x+2, y+1, ' ', nil, defStyle)
+				ui.screen.SetContent(originX+x+2, originY+y+1, ' ', nil, defStyle)
 			} else if cell > 0 {
 				// Snake
-				ui.screen.SetContent(x+2, y+1, ' ', nil, snakeStyle)
+				ui.screen.SetContent(originX+x+2, originY+y+1, ' ', nil, snakeStyle)
 			} else {
 				// Applg
-				ui.screen.SetContent(x+2, y+1, ' ', nil, appleStyle)
+				ui.screen.SetContent(originX+x+2, originY+y+1, ' ', nil, appleStyle)
 			}
 		}
 	}
 
 	// Draw borders
-	for col := 0; col <= width+1; col++ {
-		ui.screen.SetContent(col, 0, tcell.RuneHLine, nil, defStyle)
-		ui.screen.SetContent(col, height+1, tcell.RuneHLine, nil, defStyle)
+	for col := 0; col <= b.width+1; col++ {
+		ui.screen.SetContent(originX+col, originY, tcell.RuneHLine, nil, defStyle)
+		ui.screen.SetContent(originX+col, originY+b.height+1, tcell.RuneHLine, nil, defStyle)
 	}
-	for row := 0; row <= height+1; row++ {
-		ui.screen.SetContent(0, row, tcell.RuneVLine, nil, defStyle)
-		ui.screen.SetContent(width+2, row, tcell.RuneVLine, nil, defStyle)
+	for row := 0; row <= b.height+1; row++ {
+		ui.screen.SetContent(originX, originY+row, tcell.RuneVLine, nil, defStyle)
+		ui.screen.SetContent(originX+b.width+2, originY+row, tcell.RuneVLine, nil, defStyle)
 	}
 
 	// draw corners
-	ui.screen.SetContent(0, 0, tcell.RuneULCorner, nil, defStyle)
-	ui.screen.SetContent(0, height+1, tcell.RuneLLCorner, nil, defStyle)
-	ui.screen.SetContent(width+2, 0, tcell.RuneURCorner, nil, defStyle)
-	ui.screen.SetContent(width+2, b.height+1, tcell.RuneLRCorner, nil, defStyle)
-	// b.InsertWord(width+4, 3, fmt.Sprintf("Score: %d", size))
+	ui.screen.SetContent(originX, originY, tcell.RuneULCorner, nil, defStyle)
+	ui.screen.SetContent(originX, originY+b.height+1, tcell.RuneLLCorner, nil, defStyle)
+	ui.screen.SetContent(originX+b.width+2, originY, tcell.RuneURCorner, nil, defStyle)
+	ui.screen.SetContent(originX+b.width+2, originY+b.height+1, tcell.RuneLRCorner, nil, defStyle)
 
 	ui.screen.Show()
 }
