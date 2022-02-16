@@ -3,18 +3,21 @@ package main
 import (
 	"log"
 	"os"
+
+	"github.com/myoan/snake/engine"
 )
 
 const (
 	Width    = 80
 	Height   = 30
 	interval = 100
+
+	SceneTypeNone engine.SceneType = iota
+	SceneTypeMenu
+	SceneTypeIngame
 )
 
 func main() {
-	mng := NewSceneManager()
-	defer mng.Stop()
-
 	f, err := os.OpenFile("game.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Panic(err)
@@ -26,14 +29,17 @@ func main() {
 	}()
 
 	logger.Printf("========== GAME START ==========")
-	// client, _ := NewGameClient(1, Width, Height)
 
-	event := make(chan ControlEvent)
-	input := NewInput(event)
+	ge := engine.NewGameEngine(10)
+	mng := ge.SceneManager
+	defer mng.Stop()
+
+	event := ge.GetEventStream()
+	input := ge.Input
 	ui := NewUserInterface(event)
-	mng.AddScene(SceneTypeMenu, NewMenuScene(ui, input))
-	mng.AddScene(SceneTypeIngame, NewIngameScene(ui, input))
-	mng.SetFirstScene(SceneTypeMenu)
+	mng.AddScene(SceneTypeMenu, NewMenuScene(input, ui))
+	mng.AddScene(SceneTypeIngame, NewIngameScene(input, ui))
+	mng.SetInitialScene(SceneTypeMenu)
 
 	mng.Execute()
 	ui.Finish()

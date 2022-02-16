@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
-	"time"
+
+	"github.com/myoan/snake/engine"
 )
 
 var (
@@ -12,82 +12,8 @@ var (
 	ErrIngameQuited  = errors.New("ingame quited")
 )
 
-type SceneType int
-
-const (
-	SceneTypeNone SceneType = iota
-	SceneTypeMenu
-	SceneTypeIngame
-)
-
-func NewSceneManager() *SceneManager {
-	scenes := make(map[SceneType]Scene)
-	return &SceneManager{scenes: scenes}
-}
-
-// SceneManager manages every scenes
-// You must set all scenes and transitions before start
-type SceneManager struct {
-	scenes           map[SceneType]Scene
-	currentSceneType SceneType
-	currentScene     Scene
-}
-
-// Execute executes the state machine
-func (mng *SceneManager) Execute() error {
-	t := time.NewTicker(100 * time.Millisecond)
-	mng.currentScene.Start()
-	for range t.C {
-		stype, err := mng.currentScene.Update()
-		if err != nil {
-			return err
-		}
-		if stype != mng.currentSceneType {
-			logger.Printf("change scene %d -> %d", mng.currentSceneType, stype)
-			mng.MoveTo(stype)
-		}
-	}
-	mng.currentScene.Finish()
-	return nil
-}
-
-func (mng *SceneManager) Stop() {
-	fmt.Println("stop")
-}
-
-// SetFirstScene sets the first scene
-func (mng *SceneManager) SetFirstScene(ty SceneType) {
-	mng.currentSceneType = ty
-	mng.currentScene = mng.scenes[ty]
-}
-
-// AddScene adds a scene to the manager
-// If you set same type scene, it will be overwritten
-func (mng *SceneManager) AddScene(ty SceneType, scene Scene) {
-	mng.scenes[ty] = scene
-}
-
-// MoveTo changes current scene
-func (mng *SceneManager) MoveTo(ty SceneType) error {
-	scene := mng.scenes[ty]
-	if scene == nil {
-		return fmt.Errorf("scene %d not found", ty)
-	}
-	mng.currentScene.Finish()
-	mng.currentScene = scene
-	mng.currentSceneType = ty
-	mng.currentScene.Start()
-	return nil
-}
-
-type Scene interface {
-	Start()
-	Update() (SceneType, error)
-	Finish()
-}
-
 type MenuScene struct {
-	Input *Input
+	Input *engine.Input
 	UI    *UserInterface
 }
 
@@ -100,8 +26,7 @@ func (scene *MenuScene) Start() {
 
 func (scene *MenuScene) Finish() {}
 
-func (scene *MenuScene) Update() (SceneType, error) {
-
+func (scene *MenuScene) Update() (engine.SceneType, error) {
 	if scene.Input.KeySpace {
 		logger.Printf("push Space")
 		return SceneTypeIngame, nil
@@ -118,23 +43,19 @@ func (scene *MenuScene) Update() (SceneType, error) {
 	return SceneTypeMenu, nil
 }
 
-func NewMenuScene(ui *UserInterface, input *Input) *MenuScene {
+func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
 	return &MenuScene{
-		UI:    ui,
 		Input: input,
+		UI:    ui,
 	}
 }
 
-type IngameSceneStartArgs struct {
-	width  int
-	height int
-}
 type IngameScene struct {
-	Input *Input
+	Input *engine.Input
 	UI    *UserInterface
 }
 
-func NewIngameScene(ui *UserInterface, input *Input) *IngameScene {
+func NewIngameScene(input *engine.Input, ui *UserInterface) *IngameScene {
 	return &IngameScene{
 		UI:    ui,
 		Input: input,
@@ -159,7 +80,7 @@ func (scene *IngameScene) Start() {
 	localGame.GenerateSnake()
 }
 
-func (scene *IngameScene) Update() (SceneType, error) {
+func (scene *IngameScene) Update() (engine.SceneType, error) {
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)

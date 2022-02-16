@@ -1,9 +1,8 @@
 package main
 
 import (
-	"time"
-
 	"github.com/gdamore/tcell/v2"
+	"github.com/myoan/snake/engine"
 )
 
 /*
@@ -16,15 +15,10 @@ type UserInterface struct {
 	screen tcell.Screen
 }
 
-type ControlEvent struct {
-	eventtype int
-	id        int
-}
-
 // NewUserInterface creates a new UserInterface.
 // You must call this method before using the UserInterface.
 // UserInterface is listening user controlle events and sends them to the event channel.
-func NewUserInterface(event chan<- ControlEvent) *UserInterface {
+func NewUserInterface(event chan<- engine.ControlEvent) *UserInterface {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
 	s, err := tcell.NewScreen()
 	if err != nil {
@@ -116,7 +110,7 @@ func (ui *UserInterface) DrawMenu(strs []string) {
 	ui.screen.Show()
 }
 
-func (ui *UserInterface) runController(event chan<- ControlEvent) {
+func (ui *UserInterface) runController(event chan<- engine.ControlEvent) {
 	logger.Printf("runController")
 	for {
 		ev := ui.screen.PollEvent()
@@ -125,79 +119,18 @@ func (ui *UserInterface) runController(event chan<- ControlEvent) {
 			ui.screen.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				event <- ControlEvent{eventtype: 0, id: 1}
+				event <- engine.ControlEvent{Eventtype: 0, ID: 1}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
-				event <- ControlEvent{eventtype: 0, id: 2}
+				event <- engine.ControlEvent{Eventtype: 0, ID: 2}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
-				event <- ControlEvent{eventtype: 0, id: 3}
+				event <- engine.ControlEvent{Eventtype: 0, ID: 3}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
-				event <- ControlEvent{eventtype: 0, id: 4}
+				event <- engine.ControlEvent{Eventtype: 0, ID: 4}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
-				event <- ControlEvent{eventtype: 0, id: 5}
+				event <- engine.ControlEvent{Eventtype: 0, ID: 5}
 			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
-				event <- ControlEvent{eventtype: 0, id: 6}
+				event <- engine.ControlEvent{Eventtype: 0, ID: 6}
 			}
-		}
-	}
-}
-
-// Input represents the user input.
-
-type Input struct {
-	KeyEsc   bool
-	KeyA     bool
-	KeyD     bool
-	KeyQ     bool
-	KeyS     bool
-	KeyW     bool
-	KeySpace bool
-}
-
-func NewInput(event chan ControlEvent) *Input {
-	input := &Input{}
-	go input.run(event)
-	return input
-}
-
-func (input *Input) run(event <-chan ControlEvent) {
-	for ev := range event {
-		switch ev.id {
-		case 1:
-			input.KeyEsc = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyEsc = false
-			}()
-		case 2:
-			input.KeyA = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyA = false
-			}()
-		case 3:
-			input.KeyD = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyD = false
-			}()
-		case 4:
-			input.KeyW = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyW = false
-			}()
-		case 5:
-			input.KeyS = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeyS = false
-			}()
-		case 6:
-			input.KeySpace = true
-			go func() {
-				time.Sleep(time.Millisecond * time.Duration(interval))
-				input.KeySpace = false
-			}()
 		}
 	}
 }
