@@ -93,19 +93,15 @@ type MenuScene struct {
 }
 
 func (scene *MenuScene) Start() {
-	logger.Printf("MenuScene Start")
 	scene.UI.DrawMenu([]string{
 		"Press Space / Enter to Start",
 		"Press Esc to Quit",
 	})
 }
 
-func (scene *MenuScene) Finish() {
-	logger.Printf("MenuScene Finish")
-}
+func (scene *MenuScene) Finish() {}
 
 func (scene *MenuScene) Update() (SceneType, error) {
-	logger.Printf("MenuScene Update")
 
 	if scene.Input.KeySpace {
 		logger.Printf("push Space")
@@ -152,7 +148,6 @@ func NewIngameScene(ui *UserInterface, event chan ControlEvent) *IngameScene {
 }
 
 func (scene *IngameScene) Start() {
-	logger.Printf("IngameScene Start")
 	board := NewBoard(Width, Height)
 	board.GenerateApple()
 
@@ -171,7 +166,6 @@ func (scene *IngameScene) Start() {
 }
 
 func (scene *IngameScene) Update() (SceneType, error) {
-	logger.Printf("IngameScene Update")
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)
@@ -200,6 +194,4 @@ func (scene *IngameScene) Update() (SceneType, error) {
 	return SceneTypeIngame, nil
 }
 
-func (scene *IngameScene) Finish() {
-	logger.Printf("IngameScene Finish")
-}
+func (scene *IngameScene) Finish() {}
