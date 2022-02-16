@@ -116,6 +116,8 @@ func (ui *UserInterface) DrawMenu(strs []string) {
 			ui.screen.SetContent(startw+j, h, rune(str[j]), nil, style)
 		}
 	}
+
+	ui.screen.Show()
 }
 
 func (ui *UserInterface) runController(event chan<- ControlEvent) {
