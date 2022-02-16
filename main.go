@@ -35,5 +35,6 @@ func main() {
 	mng.SetFirstScene(SceneTypeMenu)
 
 	mng.Execute()
+	ui.Finish()
 	logger.Printf("========== GAME FINISH ==========")
 }
