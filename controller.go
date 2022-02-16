@@ -51,6 +51,7 @@ func (ui *UserInterface) Finish() {
 // Draw shows the board on the screen.
 // You should call this method periodically.
 func (ui *UserInterface) Draw(b *Board) {
+	logger.Printf("DrawBoard")
 	ui.screen.Clear()
 	style := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorWhite)
 	ui.screen.SetContent(10, 30, tcell.RuneLRCorner, nil, style)
@@ -97,12 +98,24 @@ func (ui *UserInterface) Draw(b *Board) {
 	ui.screen.Show()
 }
 
-func (ui *UserInterface) DrawMenu() {
+// DrawMenu displays input list.
+// Each line is centered.
+func (ui *UserInterface) DrawMenu(strs []string) {
 	style := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	ui.screen.SetContent(0, 10, 'm', nil, style)
-	ui.screen.SetContent(1, 10, 'e', nil, style)
-	ui.screen.SetContent(2, 10, 'n', nil, style)
-	ui.screen.SetContent(3, 10, 'u', nil, style)
+
+	logger.Printf("DrawMenu: %+v", strs)
+	width, height := ui.screen.Size()
+	row := len(strs)*2 - 1
+	ui.screen.Clear()
+	starth := (height - row) / 2
+
+	for i, str := range strs {
+		startw := (width - len(str)) / 2
+		h := starth + i*2
+		for j := 0; j < len(str); j++ {
+			ui.screen.SetContent(startw+j, h, rune(str[j]), nil, style)
+		}
+	}
 }
 
 func (ui *UserInterface) runController(event chan<- ControlEvent) {
@@ -145,16 +158,6 @@ func NewInput(event chan ControlEvent) *Input {
 	input := &Input{}
 	go input.run(event)
 	return input
-}
-
-func (input *Input) reset() {
-	logger.Printf("reset all")
-	input.KeyEsc = false
-	input.KeyA = false
-	input.KeyS = false
-	input.KeyW = false
-	input.KeyD = false
-	input.KeySpace = false
 }
 
 func (input *Input) run(event <-chan ControlEvent) {

@@ -15,7 +15,8 @@ var (
 type SceneType int
 
 const (
-	SceneTypeMenu SceneType = iota
+	SceneTypeNone SceneType = iota
+	SceneTypeMenu
 	SceneTypeIngame
 )
 
@@ -42,6 +43,7 @@ func (mng *SceneManager) Execute() error {
 			return err
 		}
 		if stype != mng.currentSceneType {
+			logger.Printf("change scene %d -> %d", mng.currentSceneType, stype)
 			mng.MoveTo(stype)
 		}
 	}
@@ -53,10 +55,14 @@ func (mng *SceneManager) Stop() {
 	fmt.Println("stop")
 }
 
+// SetFirstScene sets the first scene
 func (mng *SceneManager) SetFirstScene(ty SceneType) {
 	mng.currentSceneType = ty
 	mng.currentScene = mng.scenes[ty]
 }
+
+// AddScene adds a scene to the manager
+// If you set same type scene, it will be overwritten
 func (mng *SceneManager) AddScene(ty SceneType, scene Scene) {
 	mng.scenes[ty] = scene
 }
@@ -69,6 +75,7 @@ func (mng *SceneManager) MoveTo(ty SceneType) error {
 	}
 	mng.currentScene.Finish()
 	mng.currentScene = scene
+	mng.currentSceneType = ty
 	mng.currentScene.Start()
 	return nil
 }
@@ -87,12 +94,16 @@ type MenuScene struct {
 
 func (scene *MenuScene) Start() {
 	logger.Printf("MenuScene Start")
-	scene.UI.DrawMenu()
+	scene.UI.DrawMenu([]string{
+		"Press Space / Enter to Start",
+		"Press Esc to Quit",
+	})
 }
+
 func (scene *MenuScene) Finish() {
 	logger.Printf("MenuScene Finish")
-
 }
+
 func (scene *MenuScene) Update() (SceneType, error) {
 	logger.Printf("MenuScene Update")
 
@@ -100,8 +111,15 @@ func (scene *MenuScene) Update() (SceneType, error) {
 		logger.Printf("push Space")
 		return SceneTypeIngame, nil
 	}
+	if scene.Input.KeyEsc {
+		logger.Printf("push Esc")
+		return SceneTypeNone, ErrIngameQuited
+	}
 
-	scene.UI.DrawMenu()
+	scene.UI.DrawMenu([]string{
+		"Press Space / Enter to Start",
+		"Press Esc to Quit",
+	})
 	return SceneTypeMenu, nil
 }
 
@@ -134,7 +152,7 @@ func NewIngameScene(ui *UserInterface, event chan ControlEvent) *IngameScene {
 }
 
 func (scene *IngameScene) Start() {
-	// sargs := args.(IngameSceneStartArgs)
+	logger.Printf("IngameScene Start")
 	board := NewBoard(Width, Height)
 	board.GenerateApple()
 
@@ -153,6 +171,7 @@ func (scene *IngameScene) Start() {
 }
 
 func (scene *IngameScene) Update() (SceneType, error) {
+	logger.Printf("IngameScene Update")
 	if scene.Input.KeyA {
 		logger.Printf("turn <-")
 		localGame.changeDirection(MoveLeft)
@@ -169,20 +188,18 @@ func (scene *IngameScene) Update() (SceneType, error) {
 		logger.Printf("turn v")
 		localGame.changeDirection(MoveDown)
 	}
-	if scene.Input.KeyEsc {
-		logger.Printf("quit")
-		return SceneTypeIngame, ErrIngameQuited
-	}
 	logger.Printf("Ingame Update")
 
 	err := localGame.MovePlayer()
 	if err != nil {
 		localGame.board.Reset()
-		return SceneTypeIngame, ErrIngameHitWall
+		return SceneTypeMenu, nil
 	}
 	localGame.board.Update()
 	scene.UI.Draw(localGame.board)
 	return SceneTypeIngame, nil
 }
 
-func (scene *IngameScene) Finish() {}
+func (scene *IngameScene) Finish() {
+	logger.Printf("IngameScene Finish")
+}
