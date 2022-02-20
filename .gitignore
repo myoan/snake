@@ -1,3 +1,4 @@
 !bin/.gitkeep
 bin/*
-game.log
+!log/.gitkeep
+log/*
