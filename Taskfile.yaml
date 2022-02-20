@@ -1,0 +1,31 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  BINARY_DIR: bin
+
+tasks:
+  init:
+    cmds:
+      - mkdir -p {{.BINARY_DIR}}
+  build:
+    cmds:
+      - task: build_client
+      - task: build_server
+  build_client:
+    deps:
+      - init
+    dir: client
+    cmds:
+      - go build
+      - mv client ../{{.BINARY_DIR}}
+    silent: true
+  build_server:
+    deps:
+      - init
+    dir: server
+    cmds:
+      - go build
+      - mv server ../{{.BINARY_DIR}}
+    silent: true
