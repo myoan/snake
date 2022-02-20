@@ -4,11 +4,13 @@ version: '3'
 
 vars:
   BINARY_DIR: bin
+  LOG_DIR: log
 
 tasks:
   init:
     cmds:
       - mkdir -p {{.BINARY_DIR}}
+      - mkdir -p {{.LOG_DIR}}
   build:
     cmds:
       - task: build_client
@@ -29,3 +31,7 @@ tasks:
       - go build
       - mv server ../{{.BINARY_DIR}}
     silent: true
+  clean:
+    cmds:
+      - rm -rf {{.BINARY_DIR}}/*
+      - rm -rf {{.LOG_DIR}}/*
