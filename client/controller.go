@@ -1,7 +1,15 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
+	"net/url"
+	"os"
+	"os/signal"
+	"time"
+
 	"github.com/gdamore/tcell/v2"
+	"github.com/gorilla/websocket"
 	"github.com/myoan/snake/engine"
 )
 
@@ -12,13 +20,17 @@ You shouldn't re-create this struct.
 */
 
 type UserInterface struct {
-	screen tcell.Screen
+	screen   tcell.Screen
+	webEvent chan engine.ControlEvent
+	webDone  chan struct{}
+	conn     *websocket.Conn
 }
 
 // NewUserInterface creates a new UserInterface.
 // You must call this method before using the UserInterface.
 // UserInterface is listening user controlle events and sends them to the event channel.
-func NewUserInterface(event chan<- engine.ControlEvent) *UserInterface {
+// webEvent is a channel for sending to web server.
+func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.ControlEvent) *UserInterface {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
 	s, err := tcell.NewScreen()
 	if err != nil {
@@ -28,9 +40,14 @@ func NewUserInterface(event chan<- engine.ControlEvent) *UserInterface {
 		logger.Fatalf("%+v", err)
 	}
 	s.SetStyle(defStyle)
+	done := make(chan struct{})
 
-	ui := &UserInterface{screen: s}
-	go ui.runController(event)
+	ui := &UserInterface{
+		screen:   s,
+		webEvent: webEvent,
+		webDone:  done,
+	}
+	go ui.runController(event, webEvent)
 
 	return ui
 }
@@ -110,7 +127,7 @@ func (ui *UserInterface) DrawMenu(strs []string) {
 	ui.screen.Show()
 }
 
-func (ui *UserInterface) runController(event chan<- engine.ControlEvent) {
+func (ui *UserInterface) runController(event chan<- engine.ControlEvent, webEvent chan<- engine.ControlEvent) {
 	logger.Printf("runController")
 	for {
 		ev := ui.screen.PollEvent()
@@ -120,17 +137,78 @@ func (ui *UserInterface) runController(event chan<- engine.ControlEvent) {
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 1}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 1}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 2}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 2}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 3}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 3}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 4}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 4}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 5}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 5}
 			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 6}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 6}
 			}
 		}
 	}
+}
+
+func (ui *UserInterface) ConnectWebSocket() {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ingame"}
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+	ui.conn = c
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ui.webDone:
+			return
+		case ctrl := <-ui.webEvent:
+			event := &EventRequest{
+				Eventtype: ctrl.Eventtype,
+				ID:        ctrl.ID,
+			}
+			bytes, _ := json.Marshal(&event)
+			err := c.WriteMessage(websocket.TextMessage, bytes)
+			if err != nil {
+				log.Println("write:", err)
+				return
+			}
+		case <-interrupt:
+			log.Println("interrupt")
+
+			// Cleanly close the connection by sending a close message and then
+			// waiting (with timeout) for the server to close the connection.
+			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Println("write close:", err)
+				return
+			}
+			select {
+			case <-ui.webDone:
+			case <-time.After(time.Second):
+			}
+			return
+		}
+	}
+}
+
+func (ui *UserInterface) CloseWebSocket() {
+	logger.Printf("UI.CloseWebsocket")
+	ui.webDone <- struct{}{}
+	ui.conn.Close()
 }

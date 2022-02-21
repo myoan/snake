@@ -68,6 +68,8 @@ func (scene *IngameScene) Start() {
 
 	event := make(chan Event)
 
+	go scene.UI.ConnectWebSocket()
+
 	localGame = &LocalGame{
 		board:     board,
 		event:     event,
@@ -108,4 +110,6 @@ func (scene *IngameScene) Update() (engine.SceneType, error) {
 	return SceneTypeIngame, nil
 }
 
-func (scene *IngameScene) Finish() {}
+func (scene *IngameScene) Finish() {
+	scene.UI.CloseWebSocket()
+}

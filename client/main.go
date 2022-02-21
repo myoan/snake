@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 
@@ -16,6 +17,13 @@ const (
 	SceneTypeIngame
 )
 
+type EventRequest struct {
+	Eventtype int `json:"eventtype"`
+	ID        int `json:"id"`
+}
+
+var addr = flag.String("addr", "localhost:8080", "http service address")
+
 func main() {
 	f, err := os.OpenFile("log/client.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -29,13 +37,19 @@ func main() {
 
 	logger.Printf("========== GAME START ==========")
 
+	flag.Parse()
+	log.SetFlags(0)
+
 	ge := engine.NewGameEngine(10)
 	mng := ge.SceneManager
 	defer mng.Stop()
 
 	event := ge.GetEventStream()
 	input := ge.Input
-	ui := NewUserInterface(event)
+	webEvent := make(chan engine.ControlEvent)
+
+	ui := NewUserInterface(event, webEvent)
+
 	mng.AddScene(SceneTypeMenu, NewMenuScene(input, ui))
 	mng.AddScene(SceneTypeIngame, NewIngameScene(input, ui))
 	mng.SetInitialScene(SceneTypeMenu)

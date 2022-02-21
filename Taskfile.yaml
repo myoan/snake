@@ -7,25 +7,21 @@ vars:
   LOG_DIR: log
 
 tasks:
-  init:
-    cmds:
-      - mkdir -p {{.BINARY_DIR}}
-      - mkdir -p {{.LOG_DIR}}
   build:
     cmds:
       - task: build_client
       - task: build_server
+  build_echo:
+    cmds:
+      - task: build_echo_client
+      - task: build_echo_server
   build_client:
-    deps:
-      - init
     dir: client
     cmds:
       - go build
       - mv client ../{{.BINARY_DIR}}
     silent: true
   build_server:
-    deps:
-      - init
     dir: server
     cmds:
       - go build
@@ -35,3 +31,13 @@ tasks:
     cmds:
       - rm -rf {{.BINARY_DIR}}/*
       - rm -rf {{.LOG_DIR}}/*
+  build_echo_client:
+    dir: echoc
+    cmds:
+      - go build
+      - mv echoc ../{{.BINARY_DIR}}
+  build_echo_server:
+    dir: echo
+    cmds:
+      - go build
+      - mv echo ../{{.BINARY_DIR}}
