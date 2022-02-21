@@ -20,6 +20,7 @@ You shouldn't re-create this struct.
 */
 
 type UserInterface struct {
+	Status   int
 	screen   tcell.Screen
 	webEvent chan engine.ControlEvent
 	webDone  chan struct{}
@@ -43,6 +44,7 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 	done := make(chan struct{})
 
 	ui := &UserInterface{
+		Status:   0,
 		screen:   s,
 		webEvent: webEvent,
 		webDone:  done,
@@ -140,22 +142,37 @@ func (ui *UserInterface) runController(event chan<- engine.ControlEvent, webEven
 				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 1}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 2}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 2}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveLeft}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 3}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 3}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveRight}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 4}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 4}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveUp}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 5}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 5}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveDown}
 			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 6}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 6}
+				// webEvent <- engine.ControlEvent{Eventtype: 0, ID: 6}
 			}
 		}
 	}
+}
+
+type EventResponse struct {
+	Status  int              `json:"status"`
+	Board   []int            `json:"board"`
+	Width   int              `json:"width"`
+	Height  int              `json:"height"`
+	Players []PlayerResponse `json:"players"`
+}
+
+type PlayerResponse struct {
+	X         int `json:"x"`
+	Y         int `json:"y"`
+	Size      int `json:"size"`
+	Direction int `json:"direction"`
 }
 
 func (ui *UserInterface) ConnectWebSocket() {
@@ -170,8 +187,41 @@ func (ui *UserInterface) ConnectWebSocket() {
 	}
 	ui.conn = c
 
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	go func() {
+		for {
+			_, message, err := c.ReadMessage()
+			if err != nil {
+				logger.Println("read:", err)
+				return
+			}
+			logger.Printf("recv: %s", message)
+			var resp EventResponse
+			err = json.Unmarshal(message, &resp)
+			if err != nil {
+				logger.Println("unmarshal:", err)
+				return
+			}
+
+			if resp.Status != 0 {
+				ui.Status = 1
+				return
+			}
+
+			rawBoard := make([][]int, resp.Height)
+			for i := 0; i < resp.Height; i++ {
+				rawBoard[i] = make([]int, resp.Width)
+				for j := 0; j < resp.Width; j++ {
+					rawBoard[i][j] = resp.Board[i*resp.Width+j]
+				}
+			}
+			board := &Board{
+				board:  rawBoard,
+				width:  resp.Width,
+				height: resp.Height,
+			}
+			ui.Draw(board)
+		}
+	}()
 
 	for {
 		select {
@@ -185,17 +235,17 @@ func (ui *UserInterface) ConnectWebSocket() {
 			bytes, _ := json.Marshal(&event)
 			err := c.WriteMessage(websocket.TextMessage, bytes)
 			if err != nil {
-				log.Println("write:", err)
+				logger.Println("write:", err)
 				return
 			}
 		case <-interrupt:
-			log.Println("interrupt")
+			logger.Println("interrupt")
 
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
-				log.Println("write close:", err)
+				logger.Println("write close:", err)
 				return
 			}
 			select {

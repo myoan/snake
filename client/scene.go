@@ -83,30 +83,36 @@ func (scene *IngameScene) Start() {
 }
 
 func (scene *IngameScene) Update() (engine.SceneType, error) {
-	if scene.Input.KeyA {
-		logger.Printf("turn <-")
-		localGame.changeDirection(MoveLeft)
-	}
-	if scene.Input.KeyD {
-		logger.Printf("turn ->")
-		localGame.changeDirection(MoveRight)
-	}
-	if scene.Input.KeyW {
-		logger.Printf("turn ^")
-		localGame.changeDirection(MoveUp)
-	}
-	if scene.Input.KeyS {
-		logger.Printf("turn v")
-		localGame.changeDirection(MoveDown)
-	}
+	/*
+		if scene.Input.KeyA {
+			logger.Printf("turn <-")
+			localGame.changeDirection(MoveLeft)
+		}
+		if scene.Input.KeyD {
+			logger.Printf("turn ->")
+			localGame.changeDirection(MoveRight)
+		}
+		if scene.Input.KeyW {
+			logger.Printf("turn ^")
+			localGame.changeDirection(MoveUp)
+		}
+		if scene.Input.KeyS {
+			logger.Printf("turn v")
+			localGame.changeDirection(MoveDown)
+		}
 
-	err := localGame.MovePlayer()
-	if err != nil {
-		localGame.board.Reset()
+		err := localGame.MovePlayer()
+		if err != nil {
+			localGame.board.Reset()
+			return SceneTypeMenu, nil
+		}
+		localGame.board.Update()
+		scene.UI.Draw(localGame.board)
+	*/
+
+	if scene.UI.Status != 0 {
 		return SceneTypeMenu, nil
 	}
-	localGame.board.Update()
-	scene.UI.Draw(localGame.board)
 	return SceneTypeIngame, nil
 }
 

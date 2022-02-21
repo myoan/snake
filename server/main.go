@@ -16,8 +16,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var addr = flag.String("addr", "localhost:8080", "http service address")
+const (
+	Width  = 80
+	Height = 40
+)
 
+var addr = flag.String("addr", "localhost:8080", "http service address")
 var upgrader = websocket.Upgrader{} // use default options
 var logger *log.Logger
 
@@ -34,6 +38,7 @@ type PlayerResponse struct {
 }
 
 type EventResponse struct {
+	Status  int              `json:"status"`
 	Board   []int            `json:"board"`
 	Width   int              `json:"width"`
 	Height  int              `json:"height"`
@@ -56,10 +61,10 @@ func (c *WebClient) Send() {
 		Count += Delta
 		event := &EventResponse{}
 		bytes, _ := json.Marshal(&event)
-		log.Println("write:", string(bytes))
+		logger.Println("write:", string(bytes))
 		err := c.conn.WriteMessage(websocket.TextMessage, bytes)
 		if err != nil {
-			log.Println("write:", err)
+			logger.Println("write:", err)
 			return
 		}
 	}
@@ -68,39 +73,36 @@ func (c *WebClient) Send() {
 func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		logger.Print("upgrade:", err)
 		return
 	}
 	client = &WebClient{
 		conn: c,
 	}
 	defer c.Close()
-	go client.Send()
+
+	// --- create game engine ---
+
+	event := make(chan Event)
+	game := NewGame(Width, Height, event)
+
+	go game.Run()
 
 	for {
-		mt, message, err := c.ReadMessage()
+		_, message, err := c.ReadMessage()
 		if err != nil {
-			log.Println("read:", err)
+			logger.Println("read:", err)
 			break
 		}
-		log.Printf("recv: %s", message)
+		logger.Printf("recv: %s", message)
 
-		// var req EventRequest
-		// json.Unmarshal(message, &req)
+		var req EventRequest
+		json.Unmarshal(message, &req)
 
-		resp := &EventResponse{
-			Board:  []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0},
-			Width:  4,
-			Height: 5,
-			Players: []PlayerResponse{
-				{X: 0, Y: 1, Size: 1, Direction: 1},
-			},
-		}
-		bytes, _ := json.Marshal(&resp)
-		err = c.WriteMessage(mt, bytes)
+		err = game.changeDirection(req.ID)
 		if err != nil {
-			log.Println("write:", err)
-			break
+			logger.Println("read:", err)
+			return
 		}
 	}
 }
@@ -123,10 +125,10 @@ func main() {
 	Count = 0
 	Delta = 1
 	flag.Parse()
-	log.SetFlags(0)
+	logger.SetFlags(0)
 	http.HandleFunc("/ingame", ingameHandler)
 	http.HandleFunc("/", home)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	logger.Fatal(http.ListenAndServe(*addr, nil))
 }
 
 var homeTemplate = template.Must(template.New("").Parse(`

@@ -17,17 +17,17 @@ type Engine struct {
 	logic       GameLogic
 }
 
-func NewGameEngine(fps int) *Engine {
-	clients := make([]Client, 0)
-	eventStream := make(chan []byte)
-
-	return &Engine{
-		clients:     clients,
-		interval:    1000 / fps,
-		eventStream: eventStream,
-		logic:       NewGame(),
-	}
-}
+// func NewGameEngine(fps int) *Engine {
+// 	clients := make([]Client, 0)
+// 	eventStream := make(chan []byte)
+//
+// 	return &Engine{
+// 		clients:     clients,
+// 		interval:    1000 / fps,
+// 		eventStream: eventStream,
+// 		logic:       NewGame(),
+// 	}
+// }
 
 func (engine *Engine) GetEventStream() chan<- []byte {
 	return engine.eventStream
