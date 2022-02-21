@@ -2,10 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/url"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -176,14 +173,12 @@ type PlayerResponse struct {
 }
 
 func (ui *UserInterface) ConnectWebSocket() {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ingame"}
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		logger.Printf("dial: %v", err)
+		return
 	}
 	ui.conn = c
 
@@ -194,7 +189,6 @@ func (ui *UserInterface) ConnectWebSocket() {
 				logger.Println("read:", err)
 				return
 			}
-			logger.Printf("recv: %s", message)
 			var resp EventResponse
 			err = json.Unmarshal(message, &resp)
 			if err != nil {
@@ -204,6 +198,7 @@ func (ui *UserInterface) ConnectWebSocket() {
 
 			if resp.Status != 0 {
 				ui.Status = 1
+				logger.Printf("return from ConnectWebsocket read handler: %d", resp.Status)
 				return
 			}
 
@@ -225,8 +220,6 @@ func (ui *UserInterface) ConnectWebSocket() {
 
 	for {
 		select {
-		case <-ui.webDone:
-			return
 		case ctrl := <-ui.webEvent:
 			event := &EventRequest{
 				Eventtype: ctrl.Eventtype,
@@ -238,9 +231,7 @@ func (ui *UserInterface) ConnectWebSocket() {
 				logger.Println("write:", err)
 				return
 			}
-		case <-interrupt:
-			logger.Println("interrupt")
-
+		case <-ui.webDone:
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
@@ -258,7 +249,8 @@ func (ui *UserInterface) ConnectWebSocket() {
 }
 
 func (ui *UserInterface) CloseWebSocket() {
-	logger.Printf("UI.CloseWebsocket")
 	ui.webDone <- struct{}{}
+	time.Sleep(time.Duration(300) * time.Millisecond)
+	ui.Status = 0
 	ui.conn.Close()
 }

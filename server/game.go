@@ -214,6 +214,8 @@ func (game *Game) changeDirection(direction int) error {
 
 func (game *Game) Run() {
 	t := time.NewTicker(time.Millisecond * 100)
+	defer t.Stop()
+
 	for range t.C {
 		resp := &EventResponse{
 			Status: game.status,
@@ -231,7 +233,6 @@ func (game *Game) Run() {
 		}
 
 		bytes, _ := json.Marshal(&resp)
-		logger.Println("write:", string(bytes))
 		err := client.conn.WriteMessage(websocket.TextMessage, bytes)
 		if err != nil {
 			logger.Println("write: ", err)
@@ -242,9 +243,28 @@ func (game *Game) Run() {
 		if err != nil {
 			logger.Println("ERR:", err)
 			game.status = 1
+
+			resp := &EventResponse{
+				Status: game.status,
+				Board:  game.board.ToArray(),
+				Width:  game.board.width,
+				Height: game.board.height,
+				Players: []PlayerResponse{
+					{
+						X:         game.x,
+						Y:         game.y,
+						Size:      game.size,
+						Direction: game.direction,
+					},
+				},
+			}
+
+			bytes, _ := json.Marshal(&resp)
+			client.conn.WriteMessage(websocket.TextMessage, bytes)
+
+			return
 		}
 		game.board.Update()
-
 	}
 }
 

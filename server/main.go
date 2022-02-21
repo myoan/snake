@@ -76,6 +76,7 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Print("upgrade:", err)
 		return
 	}
+	logger.Printf("setup new client")
 	client = &WebClient{
 		conn: c,
 	}
@@ -89,9 +90,13 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	go game.Run()
 
 	for {
-		_, message, err := c.ReadMessage()
+		mt, message, err := c.ReadMessage()
 		if err != nil {
 			logger.Println("read:", err)
+			break
+		}
+		if mt == websocket.CloseMessage {
+			logger.Println("close:", string(message))
 			break
 		}
 		logger.Printf("recv: %s", message)
@@ -105,6 +110,7 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	logger.Printf("Finish ingameHandler")
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
