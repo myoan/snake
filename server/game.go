@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/myoan/snake/api"
 )
 
@@ -18,17 +17,6 @@ const (
 	MoveDown
 )
 
-func NewPlayer() *Player {
-	return &Player{
-		State:     "alive",
-		size:      InitSize,
-		x:         InitX,
-		y:         InitY,
-		direction: MoveRight,
-		Client:    client,
-	}
-}
-
 type Player struct {
 	State     string
 	size      int
@@ -36,6 +24,40 @@ type Player struct {
 	y         int
 	direction int
 	Client    *WebClient
+	done      chan struct{}
+}
+
+func NewPlayer(stream <-chan []byte) *Player {
+	done := make(chan struct{})
+	p := &Player{
+		State:     "alive",
+		size:      InitSize,
+		x:         InitX,
+		y:         InitY,
+		direction: MoveRight,
+		Client:    client,
+		done:      done,
+	}
+	go p.run(stream)
+	return p
+}
+
+func (p *Player) run(stream <-chan []byte) {
+	for {
+		select {
+		case <-p.done:
+			return
+		case msg := <-stream:
+			var req api.EventRequest
+			json.Unmarshal(msg, &req)
+
+			p.ChangeDirection(req.ID)
+		}
+	}
+}
+
+func (p *Player) Finish() {
+	p.done <- struct{}{}
 }
 
 func (p *Player) Send(status int, board *Board) error {
@@ -55,12 +77,7 @@ func (p *Player) Send(status int, board *Board) error {
 	}
 
 	bytes, _ := json.Marshal(&resp)
-	err := client.conn.WriteMessage(websocket.TextMessage, bytes)
-	if err != nil {
-		log.Println("write: ", err)
-		return err
-	}
-	return nil
+	return p.Client.Send(bytes)
 }
 
 func (p *Player) GenerateSnake(board *Board) {
@@ -262,6 +279,7 @@ func (game *Game) Run() {
 			log.Println("ERR:", err)
 
 			game.player.Send(1, game.board)
+			game.player.Finish()
 			return
 		}
 		game.board.Update()
