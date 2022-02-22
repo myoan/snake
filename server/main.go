@@ -89,27 +89,6 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	game := NewGame(Width, Height, event, player)
 
 	go game.Run()
-
-	/*
-		for {
-			mt, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			if mt == websocket.CloseMessage {
-				log.Println("close:", string(message))
-				break
-			}
-			log.Printf("recv: %s", message)
-
-			var req api.EventRequest
-			json.Unmarshal(message, &req)
-
-			game.player.ChangeDirection(req.ID)
-		}
-	*/
-	log.Printf("Finish ingameHandler")
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
