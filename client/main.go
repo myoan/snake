@@ -26,17 +26,38 @@ type EventRequest struct {
 	ID        int `json:"id"`
 }
 
-func NewBoard(w, h int) *Board {
-	board := make([][]int, h)
-	for i := range board {
-		board[i] = make([]int, w)
-	}
-	return &Board{
-		board:  board,
-		width:  w,
-		height: h,
-	}
+type EventResponse struct {
+	Status  int              `json:"status"`
+	Board   []int            `json:"board"`
+	Width   int              `json:"width"`
+	Height  int              `json:"height"`
+	Players []PlayerResponse `json:"players"`
 }
+
+type PlayerResponse struct {
+	X         int `json:"x"`
+	Y         int `json:"y"`
+	Size      int `json:"size"`
+	Direction int `json:"direction"`
+}
+
+type Board struct {
+	board  [][]int
+	width  int
+	height int
+}
+
+// func NewBoard(w, h int) *Board {
+// 	board := make([][]int, h)
+// 	for i := range board {
+// 		board[i] = make([]int, w)
+// 	}
+// 	return &Board{
+// 		board:  board,
+// 		width:  w,
+// 		height: h,
+// 	}
+// }
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
 

@@ -27,11 +27,9 @@ func (scene *MenuScene) Finish() {}
 
 func (scene *MenuScene) Update() (engine.SceneType, error) {
 	if scene.Input.KeySpace {
-		logger.Printf("push Space")
 		return SceneTypeIngame, nil
 	}
 	if scene.Input.KeyEsc {
-		logger.Printf("push Esc")
 		return SceneTypeNone, ErrIngameQuited
 	}
 

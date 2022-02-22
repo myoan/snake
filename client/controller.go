@@ -17,12 +17,6 @@ const (
 	MoveDown
 )
 
-type Board struct {
-	board  [][]int
-	width  int
-	height int
-}
-
 /*
 UserInterface represents the user interface, screen and controller.
 This struct must be initialized at the beginning of the program and must live until the end.
@@ -169,19 +163,20 @@ func (ui *UserInterface) runController(event chan<- engine.ControlEvent, webEven
 	}
 }
 
-type EventResponse struct {
-	Status  int              `json:"status"`
-	Board   []int            `json:"board"`
-	Width   int              `json:"width"`
-	Height  int              `json:"height"`
-	Players []PlayerResponse `json:"players"`
-}
+func generateBoard(width, height int, raw []int) *Board {
+	rawBoard := make([][]int, height)
+	for i := 0; i < height; i++ {
+		rawBoard[i] = make([]int, width)
+		for j := 0; j < width; j++ {
+			rawBoard[i][j] = raw[i*width+j]
+		}
+	}
 
-type PlayerResponse struct {
-	X         int `json:"x"`
-	Y         int `json:"y"`
-	Size      int `json:"size"`
-	Direction int `json:"direction"`
+	return &Board{
+		board:  rawBoard,
+		width:  width,
+		height: height,
+	}
 }
 
 func (ui *UserInterface) ConnectWebSocket() {
@@ -209,23 +204,12 @@ func (ui *UserInterface) ConnectWebSocket() {
 			}
 
 			if resp.Status != 0 {
-				ui.Status = 1
+				ui.Status = resp.Status
 				logger.Printf("return from ConnectWebsocket read handler: %d", resp.Status)
 				return
 			}
 
-			rawBoard := make([][]int, resp.Height)
-			for i := 0; i < resp.Height; i++ {
-				rawBoard[i] = make([]int, resp.Width)
-				for j := 0; j < resp.Width; j++ {
-					rawBoard[i][j] = resp.Board[i*resp.Width+j]
-				}
-			}
-			board := &Board{
-				board:  rawBoard,
-				width:  resp.Width,
-				height: resp.Height,
-			}
+			board := generateBoard(resp.Width, resp.Height, resp.Board)
 			ui.Draw(board)
 		}
 	}()
