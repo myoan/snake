@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"html/template"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/myoan/snake/api"
 )
 
 const (
@@ -28,8 +26,50 @@ type WebClient struct {
 	conn *websocket.Conn
 }
 
+func NewWebClient(conn *websocket.Conn, dataStream chan []byte) *WebClient {
+	client = &WebClient{
+		conn: conn,
+	}
+	go client.run(dataStream)
+	return client
+}
+
 func (c *WebClient) ID() int {
 	return 1
+}
+
+func (c *WebClient) Send(data []byte) error {
+	err := client.conn.WriteMessage(websocket.TextMessage, data)
+	if err != nil {
+		log.Println("write: ", err)
+		return err
+	}
+	return nil
+}
+
+func (c *WebClient) run(stream chan []byte) {
+	for {
+		mt, message, err := c.conn.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			close(stream)
+			c.Close()
+			return
+		}
+		if mt == websocket.CloseMessage {
+			log.Println("close:", string(message))
+			close(stream)
+			c.Close()
+			return
+		}
+		log.Printf("recv: %s", message)
+
+		stream <- message
+	}
+}
+
+func (c *WebClient) Close() {
+	c.conn.Close()
 }
 
 func ingameHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,12 +78,10 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 		log.Print("upgrade:", err)
 		return
 	}
-	client = &WebClient{
-		conn: c,
-	}
-	defer c.Close()
+	stream := make(chan []byte)
+	client = NewWebClient(c, stream)
 
-	player := NewPlayer()
+	player := NewPlayer(stream)
 
 	// --- create game engine ---
 
@@ -52,23 +90,25 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 
 	go game.Run()
 
-	for {
-		mt, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
-		if mt == websocket.CloseMessage {
-			log.Println("close:", string(message))
-			break
-		}
-		log.Printf("recv: %s", message)
+	/*
+		for {
+			mt, message, err := c.ReadMessage()
+			if err != nil {
+				log.Println("read:", err)
+				break
+			}
+			if mt == websocket.CloseMessage {
+				log.Println("close:", string(message))
+				break
+			}
+			log.Printf("recv: %s", message)
 
-		var req api.EventRequest
-		json.Unmarshal(message, &req)
+			var req api.EventRequest
+			json.Unmarshal(message, &req)
 
-		game.player.ChangeDirection(req.ID)
-	}
+			game.player.ChangeDirection(req.ID)
+		}
+	*/
 	log.Printf("Finish ingameHandler")
 }
 
