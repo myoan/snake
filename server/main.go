@@ -10,8 +10,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -23,7 +21,8 @@ const (
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
 var upgrader = websocket.Upgrader{} // use default options
-var logger *log.Logger
+
+var client *WebClient
 
 type EventRequest struct {
 	Eventtype int `json:"eventtype"`
@@ -49,34 +48,12 @@ type WebClient struct {
 	conn *websocket.Conn
 }
 
-var client *WebClient
-var Count int
-var Delta int
-
-func (c *WebClient) Send() {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		Count += Delta
-		event := &EventResponse{}
-		bytes, _ := json.Marshal(&event)
-		logger.Println("write:", string(bytes))
-		err := c.conn.WriteMessage(websocket.TextMessage, bytes)
-		if err != nil {
-			logger.Println("write:", err)
-			return
-		}
-	}
-}
-
 func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logger.Print("upgrade:", err)
+		log.Print("upgrade:", err)
 		return
 	}
-	logger.Printf("setup new client")
 	client = &WebClient{
 		conn: c,
 	}
@@ -92,25 +69,25 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		mt, message, err := c.ReadMessage()
 		if err != nil {
-			logger.Println("read:", err)
+			log.Println("read:", err)
 			break
 		}
 		if mt == websocket.CloseMessage {
-			logger.Println("close:", string(message))
+			log.Println("close:", string(message))
 			break
 		}
-		logger.Printf("recv: %s", message)
+		log.Printf("recv: %s", message)
 
 		var req EventRequest
 		json.Unmarshal(message, &req)
 
-		err = game.changeDirection(req.ID)
+		err = game.ChangeDirection(req.ID)
 		if err != nil {
-			logger.Println("read:", err)
+			log.Println("read:", err)
 			return
 		}
 	}
-	logger.Printf("Finish ingameHandler")
+	log.Printf("Finish ingameHandler")
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -118,23 +95,12 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	f, err := os.OpenFile("log/server.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Panic(err)
-	}
-	logger = log.New(f, "", log.LstdFlags)
-	defer func() {
-		f.Sync()
-		f.Close()
-	}()
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	Count = 0
-	Delta = 1
 	flag.Parse()
-	logger.SetFlags(0)
 	http.HandleFunc("/ingame", ingameHandler)
 	http.HandleFunc("/", home)
-	logger.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
 var homeTemplate = template.Must(template.New("").Parse(`
