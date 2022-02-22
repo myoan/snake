@@ -1,5 +1,12 @@
 package api
 
+const (
+	MoveLeft = iota
+	MoveRight
+	MoveUp
+	MoveDown
+)
+
 type EventRequest struct {
 	Eventtype int `json:"eventtype"`
 	ID        int `json:"id"`

@@ -11,13 +11,6 @@ import (
 	"github.com/myoan/snake/engine"
 )
 
-const (
-	MoveLeft = iota
-	MoveRight
-	MoveUp
-	MoveDown
-)
-
 /*
 UserInterface represents the user interface, screen and controller.
 This struct must be initialized at the beginning of the program and must live until the end.
@@ -145,16 +138,16 @@ func (ui *UserInterface) runController(event chan<- engine.ControlEvent, webEven
 				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 1}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 2}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveLeft}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveLeft}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 3}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveRight}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveRight}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 4}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveUp}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveUp}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 5}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveDown}
+				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveDown}
 			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 6}
 			}

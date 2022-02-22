@@ -10,13 +10,6 @@ import (
 	"github.com/myoan/snake/api"
 )
 
-const (
-	MoveLeft = iota
-	MoveRight
-	MoveUp
-	MoveDown
-)
-
 type Player struct {
 	size      int
 	x         int
@@ -38,7 +31,7 @@ func NewPlayer(client Client, stream <-chan []byte) *Player {
 		size:      InitSize,
 		x:         InitX,
 		y:         InitY,
-		direction: MoveRight,
+		direction: api.MoveRight,
 		Client:    client,
 		done:      done,
 	}
@@ -89,16 +82,16 @@ func (p *Player) GenerateSnake(board *Board) {
 
 	var dx, dy int
 	switch p.direction {
-	case MoveUp:
+	case api.MoveUp:
 		dx = 0
 		dy = 1
-	case MoveDown:
+	case api.MoveDown:
 		dx = 0
 		dy = -1
-	case MoveLeft:
+	case api.MoveLeft:
 		dx = 1
 		dy = 0
-	case MoveRight:
+	case api.MoveRight:
 		dx = -1
 		dy = 0
 	}
@@ -124,16 +117,16 @@ func (p *Player) GenerateSnake(board *Board) {
 func (p *Player) Move(board *Board) error {
 	var dx, dy int
 	switch p.direction {
-	case MoveLeft:
+	case api.MoveLeft:
 		dx = -1
 		dy = 0
-	case MoveRight:
+	case api.MoveRight:
 		dx = 1
 		dy = 0
-	case MoveUp:
+	case api.MoveUp:
 		dx = 0
 		dy = -1
-	case MoveDown:
+	case api.MoveDown:
 		dx = 0
 		dy = 1
 	}
@@ -160,10 +153,10 @@ func (p *Player) Move(board *Board) error {
 func (p *Player) ChangeDirection(direction int) {
 	log.Printf("change direction: %d -> %d", p.direction, direction)
 	// Do not turn around
-	if p.direction == MoveDown && direction == MoveUp ||
-		p.direction == MoveUp && direction == MoveDown ||
-		p.direction == MoveLeft && direction == MoveRight ||
-		p.direction == MoveRight && direction == MoveLeft {
+	if p.direction == api.MoveDown && direction == api.MoveUp ||
+		p.direction == api.MoveUp && direction == api.MoveDown ||
+		p.direction == api.MoveLeft && direction == api.MoveRight ||
+		p.direction == api.MoveRight && direction == api.MoveLeft {
 		return
 	}
 	p.direction = direction
