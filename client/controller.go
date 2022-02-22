@@ -58,9 +58,7 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 	return ui
 }
 
-/*
-Finish is called when the entire game is over.
-*/
+// Finish is called when the entire game is over.
 func (ui *UserInterface) Finish() {
 	ui.screen.Fini()
 }
@@ -179,6 +177,9 @@ func generateBoard(width, height int, raw []int) *Board {
 	}
 }
 
+// ConnectWebSocket connects to server.
+// It connects when ingame is started.
+// So, it is recreate connections if you play ingame multiple times.
 func (ui *UserInterface) ConnectWebSocket() {
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ingame"}
 
@@ -244,8 +245,11 @@ func (ui *UserInterface) ConnectWebSocket() {
 	}
 }
 
+// CloseWebSocket closes disconnects to server.
+// It is called when you exit ingame.
 func (ui *UserInterface) CloseWebSocket() {
 	ui.webDone <- struct{}{}
+	// TODO: Now it uses time.Sleep to wait server then close connection, but it should be replaced server response.
 	time.Sleep(time.Duration(300) * time.Millisecond)
 	ui.Status = 0
 	ui.conn.Close()

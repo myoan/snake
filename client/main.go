@@ -47,18 +47,6 @@ type Board struct {
 	height int
 }
 
-// func NewBoard(w, h int) *Board {
-// 	board := make([][]int, h)
-// 	for i := range board {
-// 		board[i] = make([]int, w)
-// 	}
-// 	return &Board{
-// 		board:  board,
-// 		width:  w,
-// 		height: h,
-// 	}
-// }
-
 var addr = flag.String("addr", "localhost:8080", "http service address")
 
 func main() {
