@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	Width  = 80
-	Height = 40
+	Width    = 80
+	Height   = 40
+	InitX    = 20
+	InitY    = 20
+	InitSize = 3
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
@@ -23,6 +26,10 @@ var client *WebClient
 
 type WebClient struct {
 	conn *websocket.Conn
+}
+
+func (c *WebClient) ID() int {
+	return 1
 }
 
 func ingameHandler(w http.ResponseWriter, r *http.Request) {
@@ -36,10 +43,12 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
+	player := NewPlayer()
+
 	// --- create game engine ---
 
 	event := make(chan Event)
-	game := NewGame(Width, Height, event)
+	game := NewGame(Width, Height, event, player)
 
 	go game.Run()
 
@@ -58,11 +67,7 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 		var req api.EventRequest
 		json.Unmarshal(message, &req)
 
-		err = game.ChangeDirection(req.ID)
-		if err != nil {
-			log.Println("read:", err)
-			return
-		}
+		game.player.ChangeDirection(req.ID)
 	}
 	log.Printf("Finish ingameHandler")
 }

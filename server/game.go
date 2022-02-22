@@ -18,254 +18,16 @@ const (
 	MoveDown
 )
 
-type Board struct {
-	board  [][]int
-	width  int
-	height int
-}
-
-func NewBoard(w, h int) *Board {
-	board := make([][]int, h)
-	for i := range board {
-		board[i] = make([]int, w)
-	}
-	return &Board{
-		board:  board,
-		width:  w,
-		height: h,
-	}
-}
-
-func (b *Board) Reset() {
-	for y := 0; y < b.height; y++ {
-		for x := 0; x < b.width; x++ {
-			if b.board[y][x] > 0 {
-				b.board[y][x] = 0
-			}
-		}
-	}
-}
-
-func (b *Board) ToArray() []int {
-	ret := make([]int, b.width*b.height)
-
-	for y := 0; y < b.height; y++ {
-		for x := 0; x < b.width; x++ {
-			ret[y*b.width+x] = b.board[y][x]
-		}
-	}
-	return ret
-}
-
-func (b *Board) GenerateApple() {
-	for {
-		x := rand.Intn(b.width)
-		y := rand.Intn(b.height)
-
-		if b.GetCell(x, y) == 0 {
-			b.SetCell(x, y, -1)
-			return
-		}
-	}
-}
-
-func (b *Board) Update() {
-	for i := 0; i < b.height; i++ {
-		for j := 0; j < b.width; j++ {
-			if b.board[i][j] > 0 {
-				b.board[i][j]--
-			}
-		}
-	}
-}
-
-func (b *Board) HitApple(x, y int) bool {
-	return b.board[y][x] == -1
-}
-
-func (b *Board) GetCell(x, y int) int {
-	return b.board[y][x]
-}
-
-func (b *Board) SetCell(x, y, data int) {
-	b.board[y][x] = data
-}
-
-type Event struct {
-	ID        int
-	Type      string
-	Direction int
-}
-
-func NewGame(w, h int, ev chan Event) *Game {
-	board := NewBoard(w, h)
-	board.GenerateApple()
-
-	game := &Game{
-		board:     board,
-		event:     ev,
-		x:         20,
-		y:         20,
-		size:      3,
+func NewPlayer() *Player {
+	return &Player{
+		State:     "alive",
+		size:      InitSize,
+		x:         InitX,
+		y:         InitY,
 		direction: MoveRight,
-	}
-	game.GenerateSnake()
-	return game
-}
-
-// Game manages the board informations, user status and game logic.
-// This game is for single-player, so Game manage player's event.
-type Game struct {
-	board     *Board
-	event     chan Event
-	x         int
-	y         int
-	size      int
-	direction int
-}
-
-func (game *Game) GenerateSnake() {
-	log.Printf("GenerateSnake(%d, %d)", game.x, game.y)
-
-	var dx, dy int
-	switch game.direction {
-	case MoveUp:
-		dx = 0
-		dy = 1
-	case MoveDown:
-		dx = 0
-		dy = -1
-	case MoveLeft:
-		dx = 1
-		dy = 0
-	case MoveRight:
-		dx = -1
-		dy = 0
-	}
-
-	x := game.x
-	y := game.y
-
-	for i := game.size; i >= 0; i-- {
-		game.board.board[y][x] = i
-		if x+dx < 0 || x+dx >= game.board.width {
-			dx = 0
-			dy = 1
-		}
-		if y+dy < 0 || y+dy >= game.board.height {
-			dx = 1
-			dy = 0
-		}
-		x += dx
-		y += dy
+		Client:    client,
 	}
 }
-
-func (game *Game) MovePlayer() error {
-	var dx, dy int
-	switch game.direction {
-	case MoveLeft:
-		dx = -1
-		dy = 0
-	case MoveRight:
-		dx = 1
-		dy = 0
-	case MoveUp:
-		dx = 0
-		dy = -1
-	case MoveDown:
-		dx = 0
-		dy = 1
-	}
-
-	nextX := game.x + dx
-	nextY := game.y + dy
-
-	if nextX < 0 || nextX == game.board.width || nextY < 0 || nextY == game.board.height {
-		return fmt.Errorf("out of border")
-	}
-	if game.board.GetCell(nextX, nextY) > 0 {
-		return fmt.Errorf("stamp snake")
-	}
-	if game.board.HitApple(nextX, nextY) {
-		game.board.GenerateApple()
-		game.size++
-	}
-	game.board.SetCell(nextX, nextY, game.size+1)
-	game.x = nextX
-	game.y = nextY
-	return nil
-}
-
-func (game *Game) ChangeDirection(direction int) error {
-	log.Printf("change direction: %d -> %d", game.direction, direction)
-	// Do not turn around
-	if game.direction == MoveDown && direction == MoveUp ||
-		game.direction == MoveUp && direction == MoveDown ||
-		game.direction == MoveLeft && direction == MoveRight ||
-		game.direction == MoveRight && direction == MoveLeft {
-		return nil
-	}
-	game.direction = direction
-	return nil
-}
-
-func (game *Game) Run() {
-	t := time.NewTicker(time.Millisecond * 100)
-	defer t.Stop()
-
-	for range t.C {
-		resp := &api.EventResponse{
-			Status: 0,
-			Board:  game.board.ToArray(),
-			Width:  game.board.width,
-			Height: game.board.height,
-			Players: []api.PlayerResponse{
-				{
-					X:         game.x,
-					Y:         game.y,
-					Size:      game.size,
-					Direction: game.direction,
-				},
-			},
-		}
-
-		bytes, _ := json.Marshal(&resp)
-		err := client.conn.WriteMessage(websocket.TextMessage, bytes)
-		if err != nil {
-			log.Println("write: ", err)
-			return
-		}
-
-		err = game.MovePlayer()
-		if err != nil {
-			log.Println("ERR:", err)
-
-			resp := &api.EventResponse{
-				Status: 1,
-				Board:  game.board.ToArray(),
-				Width:  game.board.width,
-				Height: game.board.height,
-				Players: []api.PlayerResponse{
-					{
-						X:         game.x,
-						Y:         game.y,
-						Size:      game.size,
-						Direction: game.direction,
-					},
-				},
-			}
-
-			bytes, _ := json.Marshal(&resp)
-			client.conn.WriteMessage(websocket.TextMessage, bytes)
-
-			return
-		}
-		game.board.Update()
-	}
-}
-
-/*
 
 type Player struct {
 	State     string
@@ -273,11 +35,69 @@ type Player struct {
 	x         int
 	y         int
 	direction int
-	Client    Client
+	Client    *WebClient
 }
 
-func (p *Player) ID() int {
-	return p.Client.ID()
+func (p *Player) Send(status int, board *Board) error {
+	resp := &api.EventResponse{
+		Status: status,
+		Board:  board.ToArray(),
+		Width:  board.width,
+		Height: board.height,
+		Players: []api.PlayerResponse{
+			{
+				X:         p.x,
+				Y:         p.y,
+				Size:      p.size,
+				Direction: p.direction,
+			},
+		},
+	}
+
+	bytes, _ := json.Marshal(&resp)
+	err := client.conn.WriteMessage(websocket.TextMessage, bytes)
+	if err != nil {
+		log.Println("write: ", err)
+		return err
+	}
+	return nil
+}
+
+func (p *Player) GenerateSnake(board *Board) {
+	log.Printf("GenerateSnake(%d, %d)", p.x, p.y)
+
+	var dx, dy int
+	switch p.direction {
+	case MoveUp:
+		dx = 0
+		dy = 1
+	case MoveDown:
+		dx = 0
+		dy = -1
+	case MoveLeft:
+		dx = 1
+		dy = 0
+	case MoveRight:
+		dx = -1
+		dy = 0
+	}
+
+	x := p.x
+	y := p.y
+
+	for i := p.size; i >= 0; i-- {
+		board.SetCell(x, y, i)
+		if x+dx < 0 || x+dx >= board.width {
+			dx = 0
+			dy = 1
+		}
+		if y+dy < 0 || y+dy >= board.height {
+			dx = 1
+			dy = 0
+		}
+		x += dx
+		y += dy
+	}
 }
 
 func (p *Player) Move(board *Board) error {
@@ -316,155 +136,134 @@ func (p *Player) Move(board *Board) error {
 	return nil
 }
 
-func (p *Player) Update(board *Board) {
-	// p.Client.Update(p.x, p.y, p.size, p.direction, p.State, board.board)
-}
-
-func (p *Player) Quit() {
-	// p.Client.Quit()
-}
-
-func (p *Player) GenerateSnake(b *Board) {
-	logger.Printf("GenerateSnake(%d, %d)", p.x, p.y)
-	var dx, dy int
-	switch p.direction {
-	case MoveUp:
-		dx = 0
-		dy = 1
-	case MoveDown:
-		dx = 0
-		dy = -1
-	case MoveLeft:
-		dx = 1
-		dy = 0
-	case MoveRight:
-		dx = -1
-		dy = 0
+func (p *Player) ChangeDirection(direction int) {
+	log.Printf("change direction: %d -> %d", p.direction, direction)
+	// Do not turn around
+	if p.direction == MoveDown && direction == MoveUp ||
+		p.direction == MoveUp && direction == MoveDown ||
+		p.direction == MoveLeft && direction == MoveRight ||
+		p.direction == MoveRight && direction == MoveLeft {
+		return
 	}
+	p.direction = direction
+}
 
-	x := p.x
-	y := p.y
-	for i := p.size; i >= 0; i-- {
-		b.board[y][x] = i
-		if x+dx < 0 || x+dx >= b.width {
-			dx = 0
-			dy = 1
+type Board struct {
+	board  [][]int
+	width  int
+	height int
+}
+
+func NewBoard(w, h int) *Board {
+	board := make([][]int, h)
+	for i := range board {
+		board[i] = make([]int, w)
+	}
+	return &Board{
+		board:  board,
+		width:  w,
+		height: h,
+	}
+}
+
+func (b *Board) Reset() {
+	for y := 0; y < b.height; y++ {
+		for x := 0; x < b.width; x++ {
+			if b.board[y][x] > 0 {
+				b.board[y][x] = 0
+			}
 		}
-		if y+dy < 0 || y+dy >= b.height {
-			dx = 1
-			dy = 0
+	}
+}
+
+func (b *Board) GenerateApple() {
+	for {
+		x := rand.Intn(b.width)
+		y := rand.Intn(b.height)
+
+		if b.GetCell(x, y) == 0 {
+			b.SetCell(x, y, -1)
+			return
 		}
-		x += dx
-		y += dy
 	}
 }
 
-func NewPlayer(client Client, x, y, size int) *Player {
-	return &Player{
-		State:     "alive",
-		x:         x,
-		y:         y,
-		size:      size,
-		direction: rand.Intn(4),
-		Client:    client,
+func (b *Board) Update() {
+	for i := 0; i < b.height; i++ {
+		for j := 0; j < b.width; j++ {
+			if b.board[i][j] > 0 {
+				b.board[i][j]--
+			}
+		}
 	}
 }
 
-func (p *Player) Drop() {
-	p.State = "dead"
+func (b *Board) HitApple(x, y int) bool {
+	return b.board[y][x] == -1
 }
 
-func (p *Player) Finish() {
-	// p.Client.Finish()
+func (b *Board) GetCell(x, y int) int {
+	return b.board[y][x]
 }
 
-type Game struct {
-	board   *Board
-	event   chan Event
-	Players []*Player
+func (b *Board) SetCell(x, y, data int) {
+	b.board[y][x] = data
 }
 
-func NewGame() *Game {
-	board := NewBoard(Width, Height)
+func (b *Board) ToArray() []int {
+	ret := make([]int, b.width*b.height)
+
+	for y := 0; y < b.height; y++ {
+		for x := 0; x < b.width; x++ {
+			ret[y*b.width+x] = b.board[y][x]
+		}
+	}
+	return ret
+}
+
+type Event struct {
+	ID        int
+	Type      string
+	Direction int
+}
+
+func NewGame(w, h int, ev chan Event, player *Player) *Game {
+	board := NewBoard(w, h)
 	board.GenerateApple()
+	player.GenerateSnake(board)
 
-	event := make(chan Event)
-	players := make([]*Player, 0, 1)
-
-	game := &Game{
-		board:   board,
-		event:   event,
-		Players: players,
+	return &Game{
+		board:  board,
+		event:  ev,
+		player: player,
 	}
-
-	return game
 }
 
-func (game *Game) FetchEvent() chan<- Event {
-	return game.event
+// Game manages the board informations, user status and game logic.
+// This game is for single-player, so Game manage player's event.
+type Game struct {
+	board  *Board
+	event  chan Event
+	player *Player
 }
 
-func (game *Game) ResetPlayers() {
-	players := make([]*Player, 0)
-	game.Players = players
-}
+func (game *Game) Run() {
+	t := time.NewTicker(time.Millisecond * 100)
+	defer t.Stop()
 
-func (game *Game) AddPlayer(client Client) {
-	x := rand.Intn(game.board.width)
-	y := rand.Intn(game.board.height)
-
-	p := &Player{
-		State:     "alive",
-		x:         x,
-		y:         y,
-		size:      3,
-		direction: rand.Intn(4),
-		Client:    client,
-	}
-	game.Players = append(game.Players, p)
-}
-
-func (game *Game) DelPlayer(id int) {
-	for _, player := range game.Players {
-		if player.ID() == id {
-			player.Drop()
-			logger.Printf("TODO: Delete player(id: %d)", player.ID())
+	for range t.C {
+		err := game.player.Send(0, game.board)
+		if err != nil {
+			return
 		}
-	}
-}
 
-func (game *Game) IsFinish() bool {
-	for _, p := range game.Players {
-		if p.State == "alive" {
-			return false
+		err = game.player.Move(game.board)
+		if err != nil {
+			log.Println("ERR:", err)
+
+			game.player.Send(1, game.board)
+			return
 		}
-	}
-	logger.Printf("--- Game finished ---")
-	return true
-}
-
-func (game *Game) Start() {
-	logger.Printf("Game.Start")
-}
-func (game *Game) Update() error {
-	logger.Printf("Game.Update")
-	if len(game.Players) == 0 {
-		return nil
-	} else {
-		logger.Printf("connect user, Game start")
-		return nil
+		game.board.Update()
 	}
 }
-func (game *Game) Finish() {
-	logger.Printf("Game.Finish")
-}
-
-func (game *Game) FindPlayerByID(id int) (*Player, error) {
-	for _, p := range game.Players {
-		if p.ID() == id {
-			return p, nil
-		}
-	}
-	return nil, fmt.Errorf("Player(id: %d) Not found", id)
-}
-*/
