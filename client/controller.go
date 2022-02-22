@@ -10,6 +10,19 @@ import (
 	"github.com/myoan/snake/engine"
 )
 
+const (
+	MoveLeft = iota
+	MoveRight
+	MoveUp
+	MoveDown
+)
+
+type Board struct {
+	board  [][]int
+	width  int
+	height int
+}
+
 /*
 UserInterface represents the user interface, screen and controller.
 This struct must be initialized at the beginning of the program and must live until the end.
@@ -151,7 +164,6 @@ func (ui *UserInterface) runController(event chan<- engine.ControlEvent, webEven
 				webEvent <- engine.ControlEvent{Eventtype: 0, ID: MoveDown}
 			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
 				event <- engine.ControlEvent{Eventtype: 0, ID: 6}
-				// webEvent <- engine.ControlEvent{Eventtype: 0, ID: 6}
 			}
 		}
 	}

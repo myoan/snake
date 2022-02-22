@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"math/rand"
 
 	"github.com/myoan/snake/engine"
 )
@@ -63,53 +62,10 @@ func NewIngameScene(input *engine.Input, ui *UserInterface) *IngameScene {
 }
 
 func (scene *IngameScene) Start() {
-	board := NewBoard(Width, Height)
-	board.GenerateApple()
-
-	event := make(chan Event)
-
 	go scene.UI.ConnectWebSocket()
-
-	localGame = &LocalGame{
-		board:     board,
-		event:     event,
-		x:         rand.Intn(Width),
-		y:         rand.Intn(Height),
-		size:      3,
-		direction: rand.Intn(4),
-	}
-
-	localGame.GenerateSnake()
 }
 
 func (scene *IngameScene) Update() (engine.SceneType, error) {
-	/*
-		if scene.Input.KeyA {
-			logger.Printf("turn <-")
-			localGame.changeDirection(MoveLeft)
-		}
-		if scene.Input.KeyD {
-			logger.Printf("turn ->")
-			localGame.changeDirection(MoveRight)
-		}
-		if scene.Input.KeyW {
-			logger.Printf("turn ^")
-			localGame.changeDirection(MoveUp)
-		}
-		if scene.Input.KeyS {
-			logger.Printf("turn v")
-			localGame.changeDirection(MoveDown)
-		}
-
-		err := localGame.MovePlayer()
-		if err != nil {
-			localGame.board.Reset()
-			return SceneTypeMenu, nil
-		}
-		localGame.board.Update()
-		scene.UI.Draw(localGame.board)
-	*/
-
 	if scene.UI.Status != 0 {
 		return SceneTypeMenu, nil
 	}

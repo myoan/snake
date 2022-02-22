@@ -17,9 +17,25 @@ const (
 	SceneTypeIngame
 )
 
+var (
+	logger *log.Logger
+)
+
 type EventRequest struct {
 	Eventtype int `json:"eventtype"`
 	ID        int `json:"id"`
+}
+
+func NewBoard(w, h int) *Board {
+	board := make([][]int, h)
+	for i := range board {
+		board[i] = make([]int, w)
+	}
+	return &Board{
+		board:  board,
+		width:  w,
+		height: h,
+	}
 }
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
