@@ -18,7 +18,6 @@ const (
 )
 
 type Player struct {
-	State     string
 	size      int
 	x         int
 	y         int
@@ -36,7 +35,6 @@ type Client interface {
 func NewPlayer(client Client, stream <-chan []byte) *Player {
 	done := make(chan struct{})
 	p := &Player{
-		State:     "alive",
 		size:      InitSize,
 		x:         InitX,
 		y:         InitY,
