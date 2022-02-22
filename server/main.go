@@ -17,71 +17,17 @@ const (
 	InitSize = 3
 )
 
-var addr = flag.String("addr", "localhost:8080", "http service address")
-var upgrader = websocket.Upgrader{} // use default options
-
-var client *WebClient
-
-type WebClient struct {
-	conn *websocket.Conn
-}
-
-func NewWebClient(conn *websocket.Conn, dataStream chan []byte) *WebClient {
-	client = &WebClient{
-		conn: conn,
-	}
-	go client.run(dataStream)
-	return client
-}
-
-func (c *WebClient) ID() int {
-	return 1
-}
-
-func (c *WebClient) Send(data []byte) error {
-	err := client.conn.WriteMessage(websocket.TextMessage, data)
-	if err != nil {
-		log.Println("write: ", err)
-		return err
-	}
-	return nil
-}
-
-func (c *WebClient) run(stream chan []byte) {
-	for {
-		mt, message, err := c.conn.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			close(stream)
-			c.Close()
-			return
-		}
-		if mt == websocket.CloseMessage {
-			log.Println("close:", string(message))
-			close(stream)
-			c.Close()
-			return
-		}
-		log.Printf("recv: %s", message)
-
-		stream <- message
-	}
-}
-
-func (c *WebClient) Close() {
-	c.conn.Close()
-}
-
 func ingameHandler(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
 		return
 	}
-	stream := make(chan []byte)
-	client = NewWebClient(c, stream)
 
-	player := NewPlayer(stream)
+	stream := make(chan []byte)
+	client := NewWebClient(c, stream)
+	player := NewPlayer(client, stream)
 
 	// --- create game engine ---
 
@@ -97,6 +43,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	addr := flag.String("addr", "localhost:8080", "http service address")
 
 	flag.Parse()
 	http.HandleFunc("/ingame", ingameHandler)

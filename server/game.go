@@ -23,11 +23,17 @@ type Player struct {
 	x         int
 	y         int
 	direction int
-	Client    *WebClient
+	Client    Client
 	done      chan struct{}
 }
 
-func NewPlayer(stream <-chan []byte) *Player {
+type Client interface {
+	ID() int
+	Send(data []byte) error
+	Close()
+}
+
+func NewPlayer(client Client, stream <-chan []byte) *Player {
 	done := make(chan struct{})
 	p := &Player{
 		State:     "alive",
