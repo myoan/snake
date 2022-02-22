@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/myoan/snake/api"
 )
 
 const (
@@ -214,12 +215,12 @@ func (game *Game) Run() {
 	defer t.Stop()
 
 	for range t.C {
-		resp := &EventResponse{
+		resp := &api.EventResponse{
 			Status: 0,
 			Board:  game.board.ToArray(),
 			Width:  game.board.width,
 			Height: game.board.height,
-			Players: []PlayerResponse{
+			Players: []api.PlayerResponse{
 				{
 					X:         game.x,
 					Y:         game.y,
@@ -240,12 +241,12 @@ func (game *Game) Run() {
 		if err != nil {
 			log.Println("ERR:", err)
 
-			resp := &EventResponse{
+			resp := &api.EventResponse{
 				Status: 1,
 				Board:  game.board.ToArray(),
 				Width:  game.board.width,
 				Height: game.board.height,
-				Players: []PlayerResponse{
+				Players: []api.PlayerResponse{
 					{
 						X:         game.x,
 						Y:         game.y,

@@ -1,7 +1,3 @@
-// Copyright 2015 The Gorilla WebSocket Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package main
 
 import (
@@ -12,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/myoan/snake/api"
 )
 
 const (
@@ -23,26 +20,6 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 var upgrader = websocket.Upgrader{} // use default options
 
 var client *WebClient
-
-type EventRequest struct {
-	Eventtype int `json:"eventtype"`
-	ID        int `json:"id"`
-}
-
-type PlayerResponse struct {
-	X         int `json:"x"`
-	Y         int `json:"y"`
-	Size      int `json:"size"`
-	Direction int `json:"direction"`
-}
-
-type EventResponse struct {
-	Status  int              `json:"status"`
-	Board   []int            `json:"board"`
-	Width   int              `json:"width"`
-	Height  int              `json:"height"`
-	Players []PlayerResponse `json:"players"`
-}
 
 type WebClient struct {
 	conn *websocket.Conn
@@ -78,7 +55,7 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("recv: %s", message)
 
-		var req EventRequest
+		var req api.EventRequest
 		json.Unmarshal(message, &req)
 
 		err = game.ChangeDirection(req.ID)

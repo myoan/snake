@@ -7,6 +7,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gorilla/websocket"
+	"github.com/myoan/snake/api"
 	"github.com/myoan/snake/engine"
 )
 
@@ -197,7 +198,7 @@ func (ui *UserInterface) ConnectWebSocket() {
 				logger.Println("read:", err)
 				return
 			}
-			var resp EventResponse
+			var resp api.EventResponse
 			err = json.Unmarshal(message, &resp)
 			if err != nil {
 				logger.Println("unmarshal:", err)
@@ -218,7 +219,7 @@ func (ui *UserInterface) ConnectWebSocket() {
 	for {
 		select {
 		case ctrl := <-ui.webEvent:
-			event := &EventRequest{
+			event := &api.EventRequest{
 				Eventtype: ctrl.Eventtype,
 				ID:        ctrl.ID,
 			}

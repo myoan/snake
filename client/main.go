@@ -21,26 +21,6 @@ var (
 	logger *log.Logger
 )
 
-type EventRequest struct {
-	Eventtype int `json:"eventtype"`
-	ID        int `json:"id"`
-}
-
-type EventResponse struct {
-	Status  int              `json:"status"`
-	Board   []int            `json:"board"`
-	Width   int              `json:"width"`
-	Height  int              `json:"height"`
-	Players []PlayerResponse `json:"players"`
-}
-
-type PlayerResponse struct {
-	X         int `json:"x"`
-	Y         int `json:"y"`
-	Size      int `json:"size"`
-	Direction int `json:"direction"`
-}
-
 type Board struct {
 	board  [][]int
 	width  int
