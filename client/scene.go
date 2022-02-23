@@ -16,6 +16,13 @@ type MenuScene struct {
 	UI    *UserInterface
 }
 
+func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
+	return &MenuScene{
+		Input: input,
+		UI:    ui,
+	}
+}
+
 func (scene *MenuScene) Start() {
 	scene.UI.DrawMenu([]string{
 		"Press Space / Enter to Start",
@@ -23,11 +30,9 @@ func (scene *MenuScene) Start() {
 	})
 }
 
-func (scene *MenuScene) Finish() {}
-
 func (scene *MenuScene) Update() (engine.SceneType, error) {
 	if scene.Input.KeySpace {
-		return SceneTypeIngame, nil
+		return SceneTypeMatchmaking, nil
 	}
 	if scene.Input.KeyEsc {
 		return SceneTypeNone, ErrIngameQuited
@@ -40,11 +45,33 @@ func (scene *MenuScene) Update() (engine.SceneType, error) {
 	return SceneTypeMenu, nil
 }
 
-func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
-	return &MenuScene{
-		Input: input,
+func (scene *MenuScene) Finish() {}
+
+type MatchmakingScene struct {
+	Input *engine.Input
+	UI    *UserInterface
+}
+
+func NewMatchmakingScene(input *engine.Input, ui *UserInterface) *MatchmakingScene {
+	return &MatchmakingScene{
 		UI:    ui,
+		Input: input,
 	}
+}
+
+func (scene *MatchmakingScene) Start() {
+	go scene.UI.ConnectWebSocket()
+	scene.UI.DrawMenu([]string{
+		"waiting for matchmaking...",
+	})
+}
+
+func (scene *MatchmakingScene) Update() (engine.SceneType, error) {
+	return SceneTypeIngame, nil
+}
+
+func (scene *MatchmakingScene) Finish() {
+	logger.Printf("move to ingame")
 }
 
 type IngameScene struct {
@@ -59,9 +86,7 @@ func NewIngameScene(input *engine.Input, ui *UserInterface) *IngameScene {
 	}
 }
 
-func (scene *IngameScene) Start() {
-	go scene.UI.ConnectWebSocket()
-}
+func (scene *IngameScene) Start() {}
 
 func (scene *IngameScene) Update() (engine.SceneType, error) {
 	if scene.UI.Status != 0 {

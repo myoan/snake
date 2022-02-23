@@ -26,3 +26,9 @@ type EventResponse struct {
 	Height  int              `json:"height"`
 	Players []PlayerResponse `json:"players"`
 }
+
+const (
+	GameStatusOK = iota
+	GameStatusError
+	GameStatusWaiting
+)

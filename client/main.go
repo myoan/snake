@@ -14,6 +14,7 @@ const (
 
 	SceneTypeNone engine.SceneType = iota
 	SceneTypeMenu
+	SceneTypeMatchmaking
 	SceneTypeIngame
 )
 
@@ -56,6 +57,7 @@ func main() {
 	ui := NewUserInterface(event, webEvent)
 
 	mng.AddScene(SceneTypeMenu, NewMenuScene(input, ui))
+	mng.AddScene(SceneTypeMatchmaking, NewMatchmakingScene(input, ui))
 	mng.AddScene(SceneTypeIngame, NewIngameScene(input, ui))
 	mng.SetInitialScene(SceneTypeMenu)
 

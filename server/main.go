@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"html/template"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/myoan/snake/api"
 )
 
 const (
@@ -17,7 +19,23 @@ const (
 	InitSize = 3
 )
 
-func ingameHandler(w http.ResponseWriter, r *http.Request) {
+const (
+	EventClientConnect = iota
+	EventClientFinish
+	EventClientRestart
+)
+
+type Observer interface {
+	Update(data interface{}) error
+}
+
+type TriggerArgument struct {
+	EventType int
+	Client    Client
+}
+
+func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
+	log.Printf("receive new ingame handler")
 	upgrader := websocket.Upgrader{}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -26,15 +44,13 @@ func ingameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stream := make(chan []byte)
-	client := NewWebClient(c, stream)
-	player := NewPlayer(client, stream)
+	NewWebClient(mng, c, stream)
+	// TODO: ここでNewClientしているのは、mngをObserverとして登録してNotifyするためなのだが、分かりづらい
 
-	// --- create game engine ---
-
-	event := make(chan Event)
-	game := NewGame(Width, Height, event, player)
-
-	go game.Run()
+	// player := NewPlayer(client, stream)
+	// event := make(chan Event)
+	// game := NewGame(Width, Height, event, player)
+	// go game.Run()
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -42,11 +58,47 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	addr := flag.String("addr", "localhost:8080", "http service address")
+	ge := NewGameEngine()
+
+	ge.SceneMng.AddTrigger(EventClientConnect, func(args interface{}) {
+		ta := args.(TriggerArgument)
+
+		switch ge.SceneMng.CurrentSceneID {
+		case SceneMatchmaking:
+			log.Printf("Scene: MatchMaking (%d)\n", len(ge.Clients))
+			ge.AddClient(ta.Client)
+			if ge.ReachMaxClient() {
+				ge.SceneMng.MoveScene(SceneIngame)
+
+				ge.ExecuteIngame()
+			} else {
+				data := &api.EventResponse{
+					Status: api.GameStatusWaiting,
+				}
+
+				bytes, _ := json.Marshal(&data)
+				ta.Client.Send(bytes)
+			}
+		case SceneIngame:
+			log.Printf("Scene: Ingame, ignore\n")
+			// TODO: Should I disconnect client?
+		}
+	})
+	ge.SceneMng.AddTrigger(EventClientFinish, func(args interface{}) {
+		// ta := args.(TriggerArgument)
+		log.Printf("Trigger: EventClientFinish\n")
+		ge.DeleteClient(1)
+	})
+	ge.SceneMng.AddTrigger(EventClientRestart, func(args interface{}) {
+		// ta := args.(TriggerArgument)
+		log.Printf("Trigger: EventClientRestart\n")
+	})
 
 	flag.Parse()
-	http.HandleFunc("/ingame", ingameHandler)
+	http.HandleFunc("/ingame", func(w http.ResponseWriter, r *http.Request) {
+		ingameHandler(ge.SceneMng, w, r)
+	})
 	http.HandleFunc("/", home)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

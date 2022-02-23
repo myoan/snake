@@ -10,6 +10,99 @@ import (
 	"github.com/myoan/snake/api"
 )
 
+type GameEngine struct {
+	Clients  []Client
+	SceneMng *SceneManager
+}
+
+func NewGameEngine() *GameEngine {
+	clients := make([]Client, 1)
+	mng := NewSceneManager()
+	return &GameEngine{
+		Clients:  clients,
+		SceneMng: mng,
+	}
+}
+
+func (ge *GameEngine) AddClient(c Client) {
+	// ge.Clients = append(ge.Clients, c)
+	ge.Clients[0] = c
+}
+
+func (ge *GameEngine) DeleteClient(cid int) {
+	// for i, c := range ge.Clients {
+	// 	if c.ID() == cid {
+	// 		ge.Clients = append(ge.Clients[:i], ge.Clients[i+1:]...)
+	// 		return
+	// 	}
+	// }
+}
+
+func (ge *GameEngine) ReachMaxClient() bool {
+	return len(ge.Clients) >= 1
+}
+
+func (ge *GameEngine) ExecuteIngame() {
+	client := ge.Clients[0]
+	player := NewPlayer(client, client.Stream())
+	event := make(chan Event)
+
+	game := NewGame(Width, Height, event, player)
+	go game.Run()
+}
+
+const (
+	SceneMatchmaking = iota
+	SceneIngame
+	SceneResult
+)
+
+type Client interface {
+	ID() int
+	Send(data []byte) error
+	Close()
+	Stream() chan []byte
+}
+
+type SceneManager struct {
+	CurrentSceneID int
+	SceneID        int
+	sceneMap       map[int]func(args interface{})
+}
+
+func NewSceneManager() *SceneManager {
+	m := make(map[int]func(interface{}))
+	return &SceneManager{
+		SceneID:  SceneMatchmaking,
+		sceneMap: m,
+	}
+}
+
+func (mng *SceneManager) AddTrigger(eventType int, f func(interface{})) error {
+	fn := mng.sceneMap[eventType]
+	if fn != nil {
+		return fmt.Errorf("scene ID:'%d' already exists", eventType)
+	}
+	mng.sceneMap[eventType] = f
+	return nil
+}
+
+func (mng *SceneManager) Update(data interface{}) error {
+	args := data.(TriggerArgument)
+
+	fn := mng.sceneMap[args.EventType]
+	if fn == nil {
+		return fmt.Errorf("scene ID:'%d' not found", args.EventType)
+	}
+	fn(args)
+	return nil
+}
+
+func (mng *SceneManager) MoveScene(sid int) {
+	mng.SceneID = sid
+	fmt.Printf("SceneID Change: %d\n", sid)
+}
+
 type Player struct {
 	size      int
 	x         int
@@ -17,12 +110,6 @@ type Player struct {
 	direction int
 	Client    Client
 	done      chan struct{}
-}
-
-type Client interface {
-	ID() int
-	Send(data []byte) error
-	Close()
 }
 
 func NewPlayer(client Client, stream <-chan []byte) *Player {
@@ -37,20 +124,6 @@ func NewPlayer(client Client, stream <-chan []byte) *Player {
 	}
 	go p.run(stream)
 	return p
-}
-
-func (p *Player) run(stream <-chan []byte) {
-	for {
-		select {
-		case <-p.done:
-			return
-		case msg := <-stream:
-			var req api.EventRequest
-			json.Unmarshal(msg, &req)
-
-			p.ChangeDirection(req.ID)
-		}
-	}
 }
 
 func (p *Player) Finish() {
@@ -151,7 +224,7 @@ func (p *Player) Move(board *Board) error {
 }
 
 func (p *Player) ChangeDirection(direction int) {
-	log.Printf("change direction: %d -> %d", p.direction, direction)
+	// log.Printf("change direction: %d -> %d", p.direction, direction)
 	// Do not turn around
 	if p.direction == api.MoveDown && direction == api.MoveUp ||
 		p.direction == api.MoveUp && direction == api.MoveDown ||
@@ -160,6 +233,20 @@ func (p *Player) ChangeDirection(direction int) {
 		return
 	}
 	p.direction = direction
+}
+
+func (p *Player) run(stream <-chan []byte) {
+	for {
+		select {
+		case <-p.done:
+			return
+		case msg := <-stream:
+			var req api.EventRequest
+			json.Unmarshal(msg, &req)
+
+			p.ChangeDirection(req.ID)
+		}
+	}
 }
 
 type Board struct {
@@ -266,7 +353,7 @@ func (game *Game) Run() {
 	defer t.Stop()
 
 	for range t.C {
-		err := game.player.Send(0, game.board)
+		err := game.player.Send(api.GameStatusOK, game.board)
 		if err != nil {
 			return
 		}
@@ -275,7 +362,7 @@ func (game *Game) Run() {
 		if err != nil {
 			log.Println("ERR:", err)
 
-			game.player.Send(1, game.board)
+			game.player.Send(api.GameStatusError, game.board)
 			game.player.Finish()
 			return
 		}

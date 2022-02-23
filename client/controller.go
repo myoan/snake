@@ -198,14 +198,18 @@ func (ui *UserInterface) ConnectWebSocket() {
 				return
 			}
 
-			if resp.Status != 0 {
+			// TODO: receiveとsend系のメソッドは近いファイルで定義できるようにする
+			switch resp.Status {
+			case api.GameStatusOK:
+				board := generateBoard(resp.Width, resp.Height, resp.Board)
+				ui.Draw(board)
+			case api.GameStatusError:
 				ui.Status = resp.Status
 				logger.Printf("return from ConnectWebsocket read handler: %d", resp.Status)
 				return
+			case api.GameStatusWaiting:
+				logger.Printf("Receive waiting event")
 			}
-
-			board := generateBoard(resp.Width, resp.Height, resp.Board)
-			ui.Draw(board)
 		}
 	}()
 
