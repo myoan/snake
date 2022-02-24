@@ -16,7 +16,7 @@ type GameEngine struct {
 }
 
 func NewGameEngine() *GameEngine {
-	clients := make([]Client, 1)
+	clients := make([]Client, 0)
 	mng := NewSceneManager()
 	return &GameEngine{
 		Clients:  clients,
@@ -25,17 +25,16 @@ func NewGameEngine() *GameEngine {
 }
 
 func (ge *GameEngine) AddClient(c Client) {
-	// ge.Clients = append(ge.Clients, c)
-	ge.Clients[0] = c
+	ge.Clients = append(ge.Clients, c)
 }
 
 func (ge *GameEngine) DeleteClient(cid int) {
-	// for i, c := range ge.Clients {
-	// 	if c.ID() == cid {
-	// 		ge.Clients = append(ge.Clients[:i], ge.Clients[i+1:]...)
-	// 		return
-	// 	}
-	// }
+	for i, c := range ge.Clients {
+		if c.ID() == cid {
+			ge.Clients = append(ge.Clients[:i], ge.Clients[i+1:]...)
+			return
+		}
+	}
 }
 
 func (ge *GameEngine) ReachMaxClient() bool {

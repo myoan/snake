@@ -63,9 +63,11 @@ func (c *WebClient) Stream() chan []byte {
 func (c *WebClient) run(stream chan []byte) {
 	for {
 		mt, message, err := c.conn.ReadMessage()
+		// TODO: 終了時CloseMessageが呼ばれず、エラーになっている(read: websocket: close 1000 (normal))
 		if err != nil {
 			log.Println("read:", err)
 			close(stream)
+			c.Notify(EventClientFinish)
 			c.Close()
 			return
 		}
