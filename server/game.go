@@ -243,7 +243,7 @@ func (p *Player) run(stream <-chan []byte) {
 			var req api.EventRequest
 			json.Unmarshal(msg, &req)
 
-			p.ChangeDirection(req.ID)
+			p.ChangeDirection(req.Key)
 		}
 	}
 }
