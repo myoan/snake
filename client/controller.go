@@ -134,22 +134,22 @@ func (ui *UserInterface) runController(event chan<- engine.ControlEvent, webEven
 			ui.screen.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				event <- engine.ControlEvent{Eventtype: 0, ID: 1}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: 1}
+				event <- engine.ControlEvent{Eventtype: 0, Key: 1}
+				webEvent <- engine.ControlEvent{Eventtype: 0, Key: 1}
 			} else if ev.Rune() == 'a' || ev.Key() == tcell.KeyLeft {
-				event <- engine.ControlEvent{Eventtype: 0, ID: 2}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveLeft}
+				event <- engine.ControlEvent{Eventtype: 0, Key: 2}
+				webEvent <- engine.ControlEvent{Eventtype: 0, Key: api.MoveLeft}
 			} else if ev.Rune() == 'd' || ev.Key() == tcell.KeyRight {
-				event <- engine.ControlEvent{Eventtype: 0, ID: 3}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveRight}
+				event <- engine.ControlEvent{Eventtype: 0, Key: 3}
+				webEvent <- engine.ControlEvent{Eventtype: 0, Key: api.MoveRight}
 			} else if ev.Rune() == 'w' || ev.Key() == tcell.KeyUp {
-				event <- engine.ControlEvent{Eventtype: 0, ID: 4}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveUp}
+				event <- engine.ControlEvent{Eventtype: 0, Key: 4}
+				webEvent <- engine.ControlEvent{Eventtype: 0, Key: api.MoveUp}
 			} else if ev.Rune() == 's' || ev.Key() == tcell.KeyDown {
-				event <- engine.ControlEvent{Eventtype: 0, ID: 5}
-				webEvent <- engine.ControlEvent{Eventtype: 0, ID: api.MoveDown}
+				event <- engine.ControlEvent{Eventtype: 0, Key: 5}
+				webEvent <- engine.ControlEvent{Eventtype: 0, Key: api.MoveDown}
 			} else if ev.Rune() == ' ' || ev.Key() == tcell.KeyEnter {
-				event <- engine.ControlEvent{Eventtype: 0, ID: 6}
+				event <- engine.ControlEvent{Eventtype: 0, Key: 6}
 			}
 		}
 	}
@@ -217,8 +217,9 @@ func (ui *UserInterface) ConnectWebSocket() {
 		select {
 		case ctrl := <-ui.webEvent:
 			event := &api.EventRequest{
+				ID:        1,
 				Eventtype: ctrl.Eventtype,
-				ID:        ctrl.ID,
+				Key:       ctrl.Key,
 			}
 			bytes, _ := json.Marshal(&event)
 			err := c.WriteMessage(websocket.TextMessage, bytes)

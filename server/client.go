@@ -8,6 +8,7 @@ import (
 )
 
 type WebClient struct {
+	id        int
 	stream    chan []byte
 	conn      *websocket.Conn
 	observers []Observer
@@ -21,6 +22,7 @@ func (c *WebClient) AddObserver(o Observer) {
 func NewWebClient(mng *SceneManager, conn *websocket.Conn, dataStream chan []byte) *WebClient {
 	obs := make([]Observer, 0)
 	client := &WebClient{
+		id:        1,
 		stream:    dataStream,
 		conn:      conn,
 		observers: obs,
@@ -42,7 +44,7 @@ func (c *WebClient) Notify(tp int) {
 }
 
 func (c *WebClient) ID() int {
-	return 1
+	return c.id
 }
 
 func (c *WebClient) Send(data []byte) error {

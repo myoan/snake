@@ -8,8 +8,9 @@ const (
 )
 
 type EventRequest struct {
-	Eventtype int `json:"eventtype"`
 	ID        int `json:"id"`
+	Eventtype int `json:"eventtype"`
+	Key       int `json:"key"`
 }
 
 type PlayerResponse struct {

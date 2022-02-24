@@ -6,7 +6,7 @@ import (
 
 type ControlEvent struct {
 	Eventtype int
-	ID        int
+	Key       int
 }
 
 // Input represents the user input.
@@ -29,7 +29,7 @@ func NewInput(event chan ControlEvent, interval int) *Input {
 
 func (input *Input) run(event <-chan ControlEvent, interval int) {
 	for ev := range event {
-		switch ev.ID {
+		switch ev.Key {
 		case 1:
 			input.KeyEsc = true
 			go func() {
