@@ -61,38 +61,39 @@ func main() {
 	addr := flag.String("addr", "localhost:8080", "http service address")
 	ge := NewGameEngine()
 
-	ge.SceneMng.AddTrigger(EventClientConnect, func(args interface{}) {
+	ge.SceneMng.AddHandler(EventClientConnect, SceneMatchmaking, func(args interface{}) {
+		log.Printf("Scene: MatchMaking (%d)\n", len(ge.Clients))
 		ta := args.(TriggerArgument)
+		ge.AddClient(ta.Client)
+		if ge.ReachMaxClient() {
+			ge.SceneMng.MoveScene(SceneIngame)
 
-		switch ge.SceneMng.CurrentSceneID {
-		case SceneMatchmaking:
-			log.Printf("Scene: MatchMaking (%d)\n", len(ge.Clients))
-			ge.AddClient(ta.Client)
-			if ge.ReachMaxClient() {
-				ge.SceneMng.MoveScene(SceneIngame)
-
-				ge.ExecuteIngame()
-			} else {
-				data := &api.EventResponse{
-					Status: api.GameStatusWaiting,
-				}
-
-				bytes, _ := json.Marshal(&data)
-				ta.Client.Send(bytes)
+			ge.ExecuteIngame()
+		} else {
+			data := &api.EventResponse{
+				Status: api.GameStatusWaiting,
 			}
-		case SceneIngame:
-			log.Printf("Scene: Ingame, ignore\n")
-			// TODO: Should I disconnect client?
+
+			bytes, _ := json.Marshal(&data)
+			ta.Client.Send(bytes)
 		}
 	})
-	ge.SceneMng.AddTrigger(EventClientFinish, func(args interface{}) {
-		// ta := args.(TriggerArgument)
+
+	ge.SceneMng.AddHandler(EventClientConnect, SceneIngame, func(args interface{}) {
+		log.Printf("Scene: Ingame, ignore\n")
+		// TODO: Should I disconnect client?
+	})
+
+	ge.SceneMng.AddHandler(EventClientFinish, SceneIngame, func(args interface{}) {
 		log.Printf("Trigger: EventClientFinish\n")
 		ge.DeleteClient(1)
+		// TODO: Move to SceneResult
+		ge.SceneMng.MoveScene(SceneMatchmaking)
 	})
-	ge.SceneMng.AddTrigger(EventClientRestart, func(args interface{}) {
-		// ta := args.(TriggerArgument)
+
+	ge.SceneMng.AddHandler(EventClientRestart, SceneResult, func(args interface{}) {
 		log.Printf("Trigger: EventClientRestart\n")
+		ge.SceneMng.MoveScene(SceneMatchmaking)
 	})
 
 	flag.Parse()

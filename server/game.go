@@ -63,33 +63,77 @@ type Client interface {
 	Stream() chan []byte
 }
 
+type Scene struct {
+	ID       int
+	eventMap map[int]func(args interface{})
+}
+
+func (s *Scene) AddEventHandler(eventType int, f func(interface{})) error {
+	fn := s.eventMap[eventType]
+	if fn != nil {
+		return fmt.Errorf("scene ID:'%d' already exists", eventType)
+	}
+	s.eventMap[eventType] = f
+	return nil
+}
+
 type SceneManager struct {
-	CurrentSceneID int
+	// SceneID is current scene ID
 	SceneID        int
 	sceneMap       map[int]func(args interface{})
+	Scenes         []*Scene
+	defaultHandler func(args interface{})
 }
 
 func NewSceneManager() *SceneManager {
 	m := make(map[int]func(interface{}))
+	scenes := make([]*Scene, 0)
 	return &SceneManager{
-		SceneID:  SceneMatchmaking,
-		sceneMap: m,
+		SceneID:        SceneMatchmaking,
+		sceneMap:       m,
+		Scenes:         scenes,
+		defaultHandler: func(args interface{}) {},
 	}
 }
 
-func (mng *SceneManager) AddTrigger(eventType int, f func(interface{})) error {
-	fn := mng.sceneMap[eventType]
-	if fn != nil {
-		return fmt.Errorf("scene ID:'%d' already exists", eventType)
+// FindBySceneID is return scene by sceneID
+// if not found, return error
+func (mng *SceneManager) FindBySceneID(sceneID int) (*Scene, error) {
+	for _, scene := range mng.Scenes {
+		if scene.ID == sceneID {
+			return scene, nil
+		}
 	}
-	mng.sceneMap[eventType] = f
+	return nil, fmt.Errorf("scene ID:'%d' not found", sceneID)
+}
+
+// AddHandler set function which called when server is selected scene and selected event is occurred
+// If selected scene or event is not found, SceneManagaer call default handler and it do nothing.
+// If you want to change default handler, you can use SceneManager.DefaultHandler(f)
+func (mng *SceneManager) AddHandler(eventType int, sceneID int, f func(interface{})) error {
+	scene, err := mng.FindBySceneID(sceneID)
+	if err != nil {
+		mng.addScene(sceneID)
+		scene, _ = mng.FindBySceneID(sceneID)
+	}
+	scene.AddEventHandler(eventType, f)
 	return nil
+}
+
+// DefaultHandler set default handler which called when selected scene and selected event is not found
+func (mng *SceneManager) DefaultHandler(f func(interface{})) {
+	mng.defaultHandler = f
 }
 
 func (mng *SceneManager) Update(data interface{}) error {
 	args := data.(TriggerArgument)
 
-	fn := mng.sceneMap[args.EventType]
+	scene, err := mng.FindBySceneID(mng.SceneID)
+	if err != nil {
+		return err
+	}
+
+	fn := scene.eventMap[args.EventType]
 	if fn == nil {
 		return fmt.Errorf("scene ID:'%d' not found", args.EventType)
 	}
@@ -100,6 +144,16 @@ func (mng *SceneManager) Update(data interface{}) error {
 func (mng *SceneManager) MoveScene(sid int) {
 	mng.SceneID = sid
 	fmt.Printf("SceneID Change: %d\n", sid)
+}
+
+func (mng *SceneManager) addScene(sceneID int) {
+	log.Printf("AddScene")
+	m := make(map[int]func(interface{}))
+	scene := &Scene{
+		ID:       sceneID,
+		eventMap: m,
+	}
+	mng.Scenes = append(mng.Scenes, scene)
 }
 
 type Player struct {
