@@ -69,9 +69,9 @@ func main() {
 		return
 	}
 
-	logger.Printf("Client ID: %d", resp.Uuid)
+	logger.Printf("Client ID: %d", resp.UUID)
 
-	ui := NewUserInterface(resp.Uuid, event, webEvent)
+	ui := NewUserInterface(resp.UUID, event, webEvent)
 
 	ui.AddHandler(api.GameStatusOK, func(message []byte) error {
 		var resp api.EventResponse
