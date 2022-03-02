@@ -25,13 +25,14 @@ type UserInterface struct {
 	conn     *websocket.Conn
 	funcMap  map[int]func([]byte) error
 	Score    int
+	ID       int
 }
 
 // NewUserInterface creates a new UserInterface.
 // You must call this method before using the UserInterface.
 // UserInterface is listening user controlle events and sends them to the event channel.
 // webEvent is a channel for sending to web server.
-func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.ControlEvent) *UserInterface {
+func NewUserInterface(id int, event chan<- engine.ControlEvent, webEvent chan engine.ControlEvent) *UserInterface {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorPurple)
 	s, err := tcell.NewScreen()
 	if err != nil {
@@ -47,6 +48,7 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 	ui := &UserInterface{
 		Status:   0,
 		Score:    -1,
+		ID:       id,
 		screen:   s,
 		webEvent: webEvent,
 		webDone:  done,

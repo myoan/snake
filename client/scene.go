@@ -27,13 +27,13 @@ func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
 func (scene *MenuScene) Start() {
 	if scene.UI.Score < 0 {
 		scene.UI.DrawMenu([]string{
-			"",
+			fmt.Sprintf("ID: %d, Score: -", scene.UI.ID),
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
 	} else {
 		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("Your Score: %d", scene.UI.Score),
+			fmt.Sprintf("ID: %d, Score: %d", scene.UI.ID, scene.UI.Score),
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
@@ -50,13 +50,13 @@ func (scene *MenuScene) Update() (engine.SceneType, error) {
 
 	if scene.UI.Score < 0 {
 		scene.UI.DrawMenu([]string{
-			"",
+			fmt.Sprintf("ID: %d, Score: -", scene.UI.ID),
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
 	} else {
 		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("Your Score: %d", scene.UI.Score),
+			fmt.Sprintf("ID: %d, Score: %d", scene.UI.ID, scene.UI.Score),
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})

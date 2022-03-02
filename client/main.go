@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/myoan/snake/api"
@@ -57,7 +59,19 @@ func main() {
 	input := ge.Input
 	webEvent := make(chan engine.ControlEvent)
 
-	ui := NewUserInterface(event, webEvent)
+	u := url.URL{Scheme: "http", Host: *addr, Path: "/id"}
+	data, err := http.Get(u.String())
+
+	var resp api.RestApiGetIDResponse
+	err = json.NewDecoder(data.Body).Decode(&resp)
+	if err != nil {
+		logger.Println("error:", err)
+		return
+	}
+
+	logger.Printf("Client ID: %d", resp.ID)
+
+	ui := NewUserInterface(resp.ID, event, webEvent)
 
 	ui.AddHandler(api.GameStatusOK, func(message []byte) error {
 		var resp api.EventResponse

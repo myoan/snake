@@ -32,6 +32,10 @@ type EventResponse struct {
 	Body   ResponseBody `json:"body"`
 }
 
+type RestApiGetIDResponse struct {
+	ID int `json:"id"`
+}
+
 const (
 	GameStatusOK = iota
 	GameStatusError

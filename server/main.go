@@ -61,6 +61,10 @@ func home(w http.ResponseWriter, r *http.Request) {
 	homeTemplate.Execute(w, "ws://"+r.Host+"/ingame")
 }
 
+func id(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("{\"id\":1}"))
+}
+
 func main() {
 	addr := flag.String("addr", "localhost:8080", "http service address")
 	ge := NewGameEngine()
@@ -105,6 +109,7 @@ func main() {
 		ingameHandler(ge.SceneMng, w, r)
 	})
 	http.HandleFunc("/", home)
+	http.HandleFunc("/id", id)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
