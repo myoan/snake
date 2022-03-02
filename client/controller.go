@@ -249,16 +249,8 @@ func (ui *UserInterface) ConnectWebSocket() {
 func (ui *UserInterface) CloseWebSocket() {
 	ui.webDone <- struct{}{}
 
-	mt, _, err := ui.conn.ReadMessage()
-	if err != nil {
-		logger.Println("after close(read):", err)
-		return
-	}
-
-	if mt != websocket.CloseMessage {
-		logger.Printf("mt is not ClosseMessage but: %d", mt)
-		return
-	}
+	// TODO: Does it exist other good way? (ex. wait for server response)
+	time.Sleep(300 * time.Millisecond)
 
 	ui.Status = 0
 	ui.conn.Close()
