@@ -24,6 +24,7 @@ type UserInterface struct {
 	webDone  chan struct{}
 	conn     *websocket.Conn
 	funcMap  map[int]func(interface{}) error
+	Score    int
 }
 
 // NewUserInterface creates a new UserInterface.
@@ -45,6 +46,7 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 
 	ui := &UserInterface{
 		Status:   0,
+		Score:    -1,
 		screen:   s,
 		webEvent: webEvent,
 		webDone:  done,
@@ -174,6 +176,7 @@ func generateBoard(width, height int, raw []int) *Board {
 	}
 }
 
+// AddHandler adds a handler when server response is received.
 func (ui *UserInterface) AddHandler(handler int, fn func(interface{}) error) {
 	ui.funcMap[handler] = fn
 }

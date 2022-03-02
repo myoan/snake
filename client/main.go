@@ -57,6 +57,7 @@ func main() {
 	webEvent := make(chan engine.ControlEvent)
 
 	ui := NewUserInterface(event, webEvent)
+
 	ui.AddHandler(api.GameStatusOK, func(args interface{}) error {
 		body := args.(api.ResponseBody)
 		board := generateBoard(body.Width, body.Height, body.Board)
@@ -64,8 +65,10 @@ func main() {
 		return nil
 	})
 	ui.AddHandler(api.GameStatusError, func(args interface{}) error {
+		body := args.(api.ResponseBody)
 		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
 		ui.Status = api.GameStatusError
+		ui.Score = body.Players[0].Size
 		return fmt.Errorf("error")
 	})
 	ui.AddHandler(api.GameStatusWaiting, func(args interface{}) error {

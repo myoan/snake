@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/myoan/snake/engine"
 )
@@ -24,10 +25,19 @@ func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
 }
 
 func (scene *MenuScene) Start() {
-	scene.UI.DrawMenu([]string{
-		"Press Space / Enter to Start",
-		"Press Esc to Quit",
-	})
+	if scene.UI.Score < 0 {
+		scene.UI.DrawMenu([]string{
+			"",
+			"Press Space / Enter to Start",
+			"Press Esc to Quit",
+		})
+	} else {
+		scene.UI.DrawMenu([]string{
+			fmt.Sprintf("Your Score: %d", scene.UI.Score),
+			"Press Space / Enter to Start",
+			"Press Esc to Quit",
+		})
+	}
 }
 
 func (scene *MenuScene) Update() (engine.SceneType, error) {
@@ -38,10 +48,19 @@ func (scene *MenuScene) Update() (engine.SceneType, error) {
 		return SceneTypeNone, ErrIngameQuited
 	}
 
-	scene.UI.DrawMenu([]string{
-		"Press Space / Enter to Start",
-		"Press Esc to Quit",
-	})
+	if scene.UI.Score < 0 {
+		scene.UI.DrawMenu([]string{
+			"",
+			"Press Space / Enter to Start",
+			"Press Esc to Quit",
+		})
+	} else {
+		scene.UI.DrawMenu([]string{
+			fmt.Sprintf("Your Score: %d", scene.UI.Score),
+			"Press Space / Enter to Start",
+			"Press Esc to Quit",
+		})
+	}
 	return SceneTypeMenu, nil
 }
 
