@@ -19,20 +19,6 @@ func (c *WebClient) AddObserver(o Observer) {
 	c.observers = append(c.observers, o)
 }
 
-func NewWebClient(mng *SceneManager, conn *websocket.Conn, dataStream chan []byte) *WebClient {
-	obs := make([]Observer, 0)
-	client := &WebClient{
-		id:        1,
-		stream:    dataStream,
-		conn:      conn,
-		observers: obs,
-	}
-	go client.run(dataStream)
-	client.AddObserver(mng)
-	client.Notify(EventClientConnect)
-	return client
-}
-
 func (c *WebClient) Notify(tp int) {
 	for _, o := range c.observers {
 		data := TriggerArgument{
@@ -52,7 +38,7 @@ func (c *WebClient) Send(data []byte) error {
 	defer c.mu.Unlock()
 	err := c.conn.WriteMessage(websocket.TextMessage, data)
 	if err != nil {
-		log.Println("write: ", err)
+		log.Println("[Error]write: ", err)
 		return err
 	}
 	return nil
@@ -67,14 +53,12 @@ func (c *WebClient) run(stream chan []byte) {
 		mt, message, err := c.conn.ReadMessage()
 		// TODO: 終了時CloseMessageが呼ばれず、エラーになっている(read: websocket: close 1000 (normal))
 		if err != nil {
-			log.Println("read:", err)
-			close(stream)
-			c.Notify(EventClientFinish)
-			c.Close()
-			return
-		}
-		if mt == websocket.CloseMessage {
-			log.Println("close:", string(message))
+			log.Println("[Error] read: ", err)
+			log.Printf("message type: %d", mt)
+			if mt == websocket.CloseMessage {
+				log.Println("[msg] close: ", string(message))
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			}
 			close(stream)
 			c.Notify(EventClientFinish)
 			c.Close()

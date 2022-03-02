@@ -44,13 +44,17 @@ func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
 	}
 
 	stream := make(chan []byte)
-	NewWebClient(mng, c, stream)
-	// TODO: ここでNewClientしているのは、mngをObserverとして登録してNotifyするためなのだが、分かりづらい
+	obs := make([]Observer, 0)
+	client := &WebClient{
+		id:        1,
+		stream:    stream,
+		conn:      c,
+		observers: obs,
+	}
 
-	// player := NewPlayer(client, stream)
-	// event := make(chan Event)
-	// game := NewGame(Width, Height, event, player)
-	// go game.Run()
+	go client.run(stream)
+	client.AddObserver(mng)
+	client.Notify(EventClientConnect)
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +85,7 @@ func main() {
 
 	ge.SceneMng.AddHandler(EventClientConnect, SceneIngame, func(args interface{}) {
 		log.Printf("Scene: Ingame, ignore\n")
-		// TODO: Should I disconnect client?
+		ge.DeleteClient(1)
 	})
 
 	ge.SceneMng.AddHandler(EventClientFinish, SceneIngame, func(args interface{}) {

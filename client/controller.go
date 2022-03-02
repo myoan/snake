@@ -248,8 +248,18 @@ func (ui *UserInterface) ConnectWebSocket() {
 // It is called when you exit ingame.
 func (ui *UserInterface) CloseWebSocket() {
 	ui.webDone <- struct{}{}
-	// TODO: Now it uses time.Sleep to wait server then close connection, but it should be replaced server response.
-	time.Sleep(time.Duration(300) * time.Millisecond)
+
+	mt, _, err := ui.conn.ReadMessage()
+	if err != nil {
+		logger.Println("after close(read):", err)
+		return
+	}
+
+	if mt != websocket.CloseMessage {
+		logger.Printf("mt is not ClosseMessage but: %d", mt)
+		return
+	}
+
 	ui.Status = 0
 	ui.conn.Close()
 }
