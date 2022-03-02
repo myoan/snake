@@ -23,6 +23,7 @@ type UserInterface struct {
 	webEvent chan engine.ControlEvent
 	webDone  chan struct{}
 	conn     *websocket.Conn
+	funcMap  map[int]func([]byte)
 }
 
 // NewUserInterface creates a new UserInterface.
@@ -40,12 +41,14 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 	}
 	s.SetStyle(defStyle)
 	done := make(chan struct{})
+	fm := make(map[int]func([]byte))
 
 	ui := &UserInterface{
 		Status:   0,
 		screen:   s,
 		webEvent: webEvent,
 		webDone:  done,
+		funcMap:  fm,
 	}
 	go ui.runController(event, webEvent)
 
@@ -171,6 +174,10 @@ func generateBoard(width, height int, raw []int) *Board {
 	}
 }
 
+func (ui *UserInterface) AddHandler(handler int, fn func([]byte)) {
+	ui.funcMap[handler] = fn
+}
+
 // ConnectWebSocket connects to server.
 // It connects when ingame is started.
 // So, it is recreate connections if you play ingame multiple times.
@@ -201,7 +208,8 @@ func (ui *UserInterface) ConnectWebSocket() {
 			// TODO: receiveとsend系のメソッドは近いファイルで定義できるようにする
 			switch resp.Status {
 			case api.GameStatusOK:
-				board := generateBoard(resp.Width, resp.Height, resp.Board)
+				body := resp.Body
+				board := generateBoard(body.Width, body.Height, body.Board)
 				ui.Draw(board)
 			case api.GameStatusError:
 				ui.Status = resp.Status

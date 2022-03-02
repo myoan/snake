@@ -20,12 +20,16 @@ type PlayerResponse struct {
 	Direction int `json:"direction"`
 }
 
-type EventResponse struct {
-	Status  int              `json:"status"`
+type ResponseBody struct {
 	Board   []int            `json:"board"`
 	Width   int              `json:"width"`
 	Height  int              `json:"height"`
 	Players []PlayerResponse `json:"players"`
+}
+
+type EventResponse struct {
+	Status int          `json:"status"`
+	Body   ResponseBody `json:"body"`
 }
 
 const (

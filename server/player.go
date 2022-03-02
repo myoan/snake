@@ -38,15 +38,17 @@ func (p *Player) Finish() {
 func (p *Player) Send(status int, board *Board) error {
 	resp := &api.EventResponse{
 		Status: status,
-		Board:  board.ToArray(),
-		Width:  board.width,
-		Height: board.height,
-		Players: []api.PlayerResponse{
-			{
-				X:         p.x,
-				Y:         p.y,
-				Size:      p.size,
-				Direction: p.direction,
+		Body: api.ResponseBody{
+			Board:  board.ToArray(),
+			Width:  board.width,
+			Height: board.height,
+			Players: []api.PlayerResponse{
+				{
+					X:         p.x,
+					Y:         p.y,
+					Size:      p.size,
+					Direction: p.direction,
+				},
 			},
 		},
 	}
