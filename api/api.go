@@ -33,7 +33,7 @@ type EventResponse struct {
 }
 
 type RestApiGetIDResponse struct {
-	ID int `json:"id"`
+	Uuid string `json:"uuid"`
 }
 
 const (

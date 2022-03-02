@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/myoan/snake/api"
 )
@@ -62,7 +64,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func id(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("{\"id\":1}"))
+	id := uuid.NewString()
+	w.Write([]byte(fmt.Sprintf("{\"uuid\":\"%s\"}", id)))
 }
 
 func main() {
