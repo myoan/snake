@@ -38,7 +38,7 @@ func (c *WebClient) Send(data []byte) error {
 	defer c.mu.Unlock()
 	err := c.conn.WriteMessage(websocket.TextMessage, data)
 	if err != nil {
-		log.Println("[Error]write: ", err)
+		log.Println("[Error] write: ", err)
 		return err
 	}
 	return nil
@@ -48,7 +48,7 @@ func (c *WebClient) Stream() chan []byte {
 	return c.stream
 }
 
-func (c *WebClient) run(stream chan []byte) {
+func (c *WebClient) Run(stream chan []byte) {
 	for {
 		mt, message, err := c.conn.ReadMessage()
 		// TODO: 終了時CloseMessageが呼ばれず、エラーになっている(read: websocket: close 1000 (normal))

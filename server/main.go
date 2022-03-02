@@ -52,7 +52,7 @@ func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
 		observers: obs,
 	}
 
-	go client.run(stream)
+	go client.Run(stream)
 	client.AddObserver(mng)
 	client.Notify(EventClientConnect)
 }
