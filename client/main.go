@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -58,20 +59,31 @@ func main() {
 
 	ui := NewUserInterface(event, webEvent)
 
-	ui.AddHandler(api.GameStatusOK, func(args interface{}) error {
-		body := args.(api.ResponseBody)
-		board := generateBoard(body.Width, body.Height, body.Board)
+	ui.AddHandler(api.GameStatusOK, func(message []byte) error {
+		var resp api.EventResponse
+		err = json.Unmarshal(message, &resp)
+		if err != nil {
+			logger.Println("unmarshal:", err)
+			return err
+		}
+		board := generateBoard(resp.Body.Width, resp.Body.Height, resp.Body.Board)
 		ui.Draw(board)
 		return nil
 	})
-	ui.AddHandler(api.GameStatusError, func(args interface{}) error {
-		body := args.(api.ResponseBody)
+	ui.AddHandler(api.GameStatusError, func(message []byte) error {
+		var resp api.EventResponse
+		err = json.Unmarshal(message, &resp)
+		if err != nil {
+			logger.Println("unmarshal:", err)
+			return err
+		}
+
 		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
 		ui.Status = api.GameStatusError
-		ui.Score = body.Players[0].Size
+		ui.Score = resp.Body.Players[0].Size
 		return fmt.Errorf("error")
 	})
-	ui.AddHandler(api.GameStatusWaiting, func(args interface{}) error {
+	ui.AddHandler(api.GameStatusWaiting, func(message []byte) error {
 		logger.Printf("Receive waiting event")
 		return nil
 	})

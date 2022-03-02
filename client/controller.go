@@ -23,7 +23,7 @@ type UserInterface struct {
 	webEvent chan engine.ControlEvent
 	webDone  chan struct{}
 	conn     *websocket.Conn
-	funcMap  map[int]func(interface{}) error
+	funcMap  map[int]func([]byte) error
 	Score    int
 }
 
@@ -42,7 +42,7 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 	}
 	s.SetStyle(defStyle)
 	done := make(chan struct{})
-	fm := make(map[int]func(interface{}) error)
+	fm := make(map[int]func([]byte) error)
 
 	ui := &UserInterface{
 		Status:   0,
@@ -177,7 +177,7 @@ func generateBoard(width, height int, raw []int) *Board {
 }
 
 // AddHandler adds a handler when server response is received.
-func (ui *UserInterface) AddHandler(handler int, fn func(interface{}) error) {
+func (ui *UserInterface) AddHandler(handler int, fn func([]byte) error) {
 	ui.funcMap[handler] = fn
 }
 
@@ -201,16 +201,18 @@ func (ui *UserInterface) ConnectWebSocket() {
 				logger.Println("read:", err)
 				return
 			}
-			var resp api.EventResponse
+			var resp map[string]interface{}
 			err = json.Unmarshal(message, &resp)
 			if err != nil {
 				logger.Println("unmarshal:", err)
 				return
 			}
+			fstatus := resp["status"].(float64)
+			istatus := int(fstatus)
 
-			err = ui.funcMap[resp.Status](resp.Body)
+			err = ui.funcMap[istatus](message)
 			if err != nil {
-				logger.Printf("return from ConnectWebsocket read handler: %d", resp.Status)
+				logger.Printf("return from ConnectWebsocket read handler: %d", istatus)
 				return
 			}
 		}
