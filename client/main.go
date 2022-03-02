@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/myoan/snake/api"
 	"github.com/myoan/snake/engine"
 )
 
@@ -55,6 +57,21 @@ func main() {
 	webEvent := make(chan engine.ControlEvent)
 
 	ui := NewUserInterface(event, webEvent)
+	ui.AddHandler(api.GameStatusOK, func(args interface{}) error {
+		body := args.(api.ResponseBody)
+		board := generateBoard(body.Width, body.Height, body.Board)
+		ui.Draw(board)
+		return nil
+	})
+	ui.AddHandler(api.GameStatusError, func(args interface{}) error {
+		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
+		ui.Status = api.GameStatusError
+		return fmt.Errorf("error")
+	})
+	ui.AddHandler(api.GameStatusWaiting, func(args interface{}) error {
+		logger.Printf("Receive waiting event")
+		return nil
+	})
 
 	mng.AddScene(SceneTypeMenu, NewMenuScene(input, ui))
 	mng.AddScene(SceneTypeMatchmaking, NewMatchmakingScene(input, ui))

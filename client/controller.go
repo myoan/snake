@@ -23,7 +23,7 @@ type UserInterface struct {
 	webEvent chan engine.ControlEvent
 	webDone  chan struct{}
 	conn     *websocket.Conn
-	funcMap  map[int]func([]byte)
+	funcMap  map[int]func(interface{}) error
 }
 
 // NewUserInterface creates a new UserInterface.
@@ -41,7 +41,7 @@ func NewUserInterface(event chan<- engine.ControlEvent, webEvent chan engine.Con
 	}
 	s.SetStyle(defStyle)
 	done := make(chan struct{})
-	fm := make(map[int]func([]byte))
+	fm := make(map[int]func(interface{}) error)
 
 	ui := &UserInterface{
 		Status:   0,
@@ -174,7 +174,7 @@ func generateBoard(width, height int, raw []int) *Board {
 	}
 }
 
-func (ui *UserInterface) AddHandler(handler int, fn func([]byte)) {
+func (ui *UserInterface) AddHandler(handler int, fn func(interface{}) error) {
 	ui.funcMap[handler] = fn
 }
 
@@ -205,18 +205,10 @@ func (ui *UserInterface) ConnectWebSocket() {
 				return
 			}
 
-			// TODO: receiveとsend系のメソッドは近いファイルで定義できるようにする
-			switch resp.Status {
-			case api.GameStatusOK:
-				body := resp.Body
-				board := generateBoard(body.Width, body.Height, body.Board)
-				ui.Draw(board)
-			case api.GameStatusError:
-				ui.Status = resp.Status
+			err = ui.funcMap[resp.Status](resp.Body)
+			if err != nil {
 				logger.Printf("return from ConnectWebsocket read handler: %d", resp.Status)
 				return
-			case api.GameStatusWaiting:
-				logger.Printf("Receive waiting event")
 			}
 		}
 	}()
