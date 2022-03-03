@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 
 	"github.com/myoan/snake/api"
 )
@@ -15,41 +16,56 @@ type Player struct {
 	direction int
 	Client    Client
 	done      chan struct{}
+	State     int
 }
 
-func NewPlayer(client Client, stream <-chan []byte) *Player {
+func (p *Player) ID() string {
+	return p.Client.ID()
+}
+func NewPlayer(client Client, stream <-chan []byte, w, h int) *Player {
 	done := make(chan struct{})
+	x := rand.Intn(w)
+	y := rand.Intn(h)
+	d := rand.Intn(4)
+
 	p := &Player{
 		size:      InitSize,
-		x:         InitX,
-		y:         InitY,
-		direction: api.MoveRight,
+		x:         x,
+		y:         y,
+		direction: d,
 		Client:    client,
 		done:      done,
+		State:     0,
 	}
 	go p.run(stream)
 	return p
 }
 
 func (p *Player) Finish() {
+	p.State = 1
 	p.done <- struct{}{}
+	p.Client.Close()
 }
 
-func (p *Player) Send(status int, board *Board) error {
+func (p *Player) Send(status int, board *Board, players []*Player) error {
+	playersProtocol := make([]api.PlayerResponse, len(players))
+	for i, player := range players {
+		playersProtocol[i] = api.PlayerResponse{
+			ID:        player.ID(),
+			X:         player.x,
+			Y:         player.y,
+			Size:      player.size,
+			Direction: player.direction,
+		}
+	}
+
 	resp := &api.EventResponse{
 		Status: status,
 		Body: api.ResponseBody{
-			Board:  board.ToArray(),
-			Width:  board.width,
-			Height: board.height,
-			Players: []api.PlayerResponse{
-				{
-					X:         p.x,
-					Y:         p.y,
-					Size:      p.size,
-					Direction: p.direction,
-				},
-			},
+			Board:   board.ToArray(),
+			Width:   board.width,
+			Height:  board.height,
+			Players: playersProtocol,
 		},
 	}
 

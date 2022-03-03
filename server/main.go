@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	Width    = 80
+	Width    = 40
 	Height   = 40
 	InitX    = 20
 	InitY    = 20
@@ -37,7 +37,6 @@ type TriggerArgument struct {
 }
 
 func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
-	log.Printf("receive new ingame handler")
 	upgrader := websocket.Upgrader{}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -48,12 +47,13 @@ func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
 	stream := make(chan []byte)
 	obs := make([]Observer, 0)
 	client := &WebClient{
-		id:        1,
+		uuid:      uuid.NewString(),
 		stream:    stream,
 		conn:      c,
 		observers: obs,
 	}
 
+	log.Printf("Connect new websocket")
 	go client.Run(stream)
 	client.AddObserver(mng)
 	client.Notify(EventClientConnect)
@@ -61,11 +61,6 @@ func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
 
 func home(w http.ResponseWriter, r *http.Request) {
 	homeTemplate.Execute(w, "ws://"+r.Host+"/ingame")
-}
-
-func id(w http.ResponseWriter, r *http.Request) {
-	id := uuid.NewString()
-	w.Write([]byte(fmt.Sprintf("{\"uuid\":\"%s\"}", id)))
 }
 
 func main() {
@@ -76,6 +71,7 @@ func main() {
 		log.Printf("Scene: MatchMaking (%d)\n", len(ge.Clients))
 		ta := args.(TriggerArgument)
 		ge.AddClient(ta.Client)
+		ta.Client.Send([]byte(fmt.Sprintf("{\"status\":%d, \"id\": \"%s\"}", api.GameStatusInit, ta.Client.ID())))
 		if ge.ReachMaxClient() {
 			ge.SceneMng.MoveScene(SceneIngame)
 
@@ -92,14 +88,18 @@ func main() {
 
 	ge.SceneMng.AddHandler(EventClientConnect, SceneIngame, func(args interface{}) {
 		log.Printf("Scene: Ingame, ignore\n")
-		ge.DeleteClient(1)
+		ta := args.(TriggerArgument)
+		ge.DeleteClient(ta.Client.ID())
 	})
 
 	ge.SceneMng.AddHandler(EventClientFinish, SceneIngame, func(args interface{}) {
 		log.Printf("Trigger: EventClientFinish\n")
-		ge.DeleteClient(1)
+		ta := args.(TriggerArgument)
+		ge.DeleteClient(ta.Client.ID())
 		// TODO: Move to SceneResult
-		ge.SceneMng.MoveScene(SceneMatchmaking)
+		if ge.Ingame.isFinish() {
+			ge.SceneMng.MoveScene(SceneMatchmaking)
+		}
 	})
 
 	ge.SceneMng.AddHandler(EventClientRestart, SceneResult, func(args interface{}) {
@@ -112,7 +112,6 @@ func main() {
 		ingameHandler(ge.SceneMng, w, r)
 	})
 	http.HandleFunc("/", home)
-	http.HandleFunc("/id", id)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 

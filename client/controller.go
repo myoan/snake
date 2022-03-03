@@ -25,7 +25,7 @@ type UserInterface struct {
 	conn     *websocket.Conn
 	funcMap  map[int]func([]byte) error
 	Score    int
-	ID       string
+	UUID     string
 }
 
 // NewUserInterface creates a new UserInterface.
@@ -48,7 +48,7 @@ func NewUserInterface(uuid string, event chan<- engine.ControlEvent, webEvent ch
 	ui := &UserInterface{
 		Status:   0,
 		Score:    -1,
-		ID:       uuid,
+		UUID:     uuid,
 		screen:   s,
 		webEvent: webEvent,
 		webDone:  done,
@@ -224,7 +224,7 @@ func (ui *UserInterface) ConnectWebSocket() {
 		select {
 		case ctrl := <-ui.webEvent:
 			event := &api.EventRequest{
-				ID:        1,
+				UUID:      ui.UUID,
 				Eventtype: ctrl.Eventtype,
 				Key:       ctrl.Key,
 			}

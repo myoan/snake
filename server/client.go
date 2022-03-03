@@ -8,7 +8,7 @@ import (
 )
 
 type WebClient struct {
-	id        int
+	uuid      string
 	stream    chan []byte
 	conn      *websocket.Conn
 	observers []Observer
@@ -29,16 +29,17 @@ func (c *WebClient) Notify(tp int) {
 	}
 }
 
-func (c *WebClient) ID() int {
-	return c.id
+func (c *WebClient) ID() string {
+	return c.uuid
 }
 
 func (c *WebClient) Send(data []byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	log.Printf("Send to client %s: %s", c.ID(), data)
 	err := c.conn.WriteMessage(websocket.TextMessage, data)
 	if err != nil {
-		log.Println("[Error] write: ", err)
+		log.Printf("[Error] write(%s): %v", c.ID(), err)
 		return err
 	}
 	return nil
@@ -60,7 +61,6 @@ func (c *WebClient) Run(stream chan []byte) {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			}
 			close(stream)
-			c.Notify(EventClientFinish)
 			c.Close()
 			return
 		}
@@ -71,6 +71,7 @@ func (c *WebClient) Run(stream chan []byte) {
 }
 
 func (c *WebClient) Close() {
-	log.Printf("Close client %d", c.ID())
+	log.Printf("Close client %s", c.ID())
+	c.Notify(EventClientFinish)
 	c.conn.Close()
 }

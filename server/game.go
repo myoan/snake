@@ -12,6 +12,7 @@ import (
 type GameEngine struct {
 	Clients  []Client
 	SceneMng *SceneManager
+	Ingame   *Game
 }
 
 func NewGameEngine() *GameEngine {
@@ -27,7 +28,7 @@ func (ge *GameEngine) AddClient(c Client) {
 	ge.Clients = append(ge.Clients, c)
 }
 
-func (ge *GameEngine) DeleteClient(cid int) {
+func (ge *GameEngine) DeleteClient(cid string) {
 	for i, c := range ge.Clients {
 		if c.ID() == cid {
 			ge.Clients = append(ge.Clients[:i], ge.Clients[i+1:]...)
@@ -37,15 +38,19 @@ func (ge *GameEngine) DeleteClient(cid int) {
 }
 
 func (ge *GameEngine) ReachMaxClient() bool {
-	return len(ge.Clients) >= 1
+	return len(ge.Clients) >= 2
 }
 
 func (ge *GameEngine) ExecuteIngame() {
-	client := ge.Clients[0]
-	player := NewPlayer(client, client.Stream())
+	players := make([]*Player, len(ge.Clients))
+	for i, c := range ge.Clients {
+		// TODO: Do not use magic number
+		players[i] = NewPlayer(c, c.Stream(), 40, 40)
+	}
 	event := make(chan Event)
 
-	game := NewGame(Width, Height, event, player)
+	game := NewGame(Width, Height, event, players)
+	ge.Ingame = game
 	go game.Run()
 }
 
@@ -56,7 +61,7 @@ const (
 )
 
 type Client interface {
-	ID() int
+	ID() string
 	Send(data []byte) error
 	Close()
 	Stream() chan []byte
@@ -234,24 +239,26 @@ type Event struct {
 	Direction int
 }
 
-func NewGame(w, h int, ev chan Event, player *Player) *Game {
+func NewGame(w, h int, ev chan Event, players []*Player) *Game {
 	board := NewBoard(w, h)
 	board.GenerateApple()
-	player.GenerateSnake(board)
+	for _, p := range players {
+		p.GenerateSnake(board)
+	}
 
 	return &Game{
-		board:  board,
-		event:  ev,
-		player: player,
+		board:   board,
+		event:   ev,
+		players: players,
 	}
 }
 
 // Game manages the board informations, user status and game logic.
 // This game is for single-player, so Game manage player's event.
 type Game struct {
-	board  *Board
-	event  chan Event
-	player *Player
+	board   *Board
+	event   chan Event
+	players []*Player
 }
 
 func (game *Game) Run() {
@@ -259,19 +266,41 @@ func (game *Game) Run() {
 	defer t.Stop()
 
 	for range t.C {
-		err := game.player.Send(api.GameStatusOK, game.board)
-		if err != nil {
-			return
-		}
+		log.Println("tick")
+		for _, p := range game.players {
+			if p.State == 1 {
+				continue
+			}
+			err := p.Send(api.GameStatusOK, game.board, game.players)
+			if err != nil {
+				log.Printf("Send error(%v) to client: %s", err, p.ID())
+				// TODO: player sends close event if player lost
+				continue
+				// return
+			}
+			err = p.Move(game.board)
 
-		err = game.player.Move(game.board)
-		if err != nil {
-			log.Println("ERR:", err)
+			if err != nil {
+				log.Printf("Move error(%v) to client: %s", err, p.ID())
 
-			game.player.Send(api.GameStatusError, game.board)
-			game.player.Finish()
-			return
+				p.Send(api.GameStatusError, game.board, game.players)
+				p.Finish()
+			}
+
+			if game.isFinish() {
+				log.Println("--- Game finished!!")
+				return
+			}
 		}
 		game.board.Update()
 	}
+}
+
+func (game *Game) isFinish() bool {
+	for _, p := range game.players {
+		if p.State == 0 {
+			return false
+		}
+	}
+	return true
 }

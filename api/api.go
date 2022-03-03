@@ -8,16 +8,17 @@ const (
 )
 
 type EventRequest struct {
-	ID        int `json:"id"`
-	Eventtype int `json:"eventtype"`
-	Key       int `json:"key"`
+	UUID      string `json:"uuid"`
+	Eventtype int    `json:"eventtype"`
+	Key       int    `json:"key"`
 }
 
 type PlayerResponse struct {
-	X         int `json:"x"`
-	Y         int `json:"y"`
-	Size      int `json:"size"`
-	Direction int `json:"direction"`
+	ID        string `json:"id"`
+	X         int    `json:"x"`
+	Y         int    `json:"y"`
+	Size      int    `json:"size"`
+	Direction int    `json:"direction"`
 }
 
 type ResponseBody struct {
@@ -32,12 +33,18 @@ type EventResponse struct {
 	Body   ResponseBody `json:"body"`
 }
 
+type InitResponse struct {
+	Status int    `json:"status"`
+	ID     string `json:"id"`
+}
+
 type RestApiGetIDResponse struct {
 	UUID string `json:"uuid"`
 }
 
 const (
-	GameStatusOK = iota
+	GameStatusInit = iota
+	GameStatusOK
 	GameStatusError
 	GameStatusWaiting
 )
