@@ -56,7 +56,6 @@ func (ge *GameEngine) ExecuteIngame() {
 const (
 	SceneMatchmaking = iota
 	SceneIngame
-	SceneResult
 )
 
 type Client interface {
@@ -273,9 +272,9 @@ func (game *Game) Run() {
 			err := p.Send(api.GameStatusOK, game.board, game.players)
 			if err != nil {
 				log.Printf("Send error(%v) to client: %s", err, p.ID())
-				// TODO: player sends close event if player lost
+				// player sends close event if player lost
+				// So we ignore this error
 				continue
-				// return
 			}
 			err = p.Move(game.board)
 

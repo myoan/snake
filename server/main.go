@@ -103,15 +103,9 @@ func main() {
 		log.Printf("Trigger: EventClientFinish\n")
 		ta := args.(TriggerArgument)
 		ge.DeleteClient(ta.Client.ID())
-		// TODO: Move to SceneResult
 		if ge.Ingame.isFinish() {
 			ge.SceneMng.MoveScene(SceneMatchmaking)
 		}
-	})
-
-	ge.SceneMng.AddHandler(EventClientRestart, SceneResult, func(args interface{}) {
-		log.Printf("Trigger: EventClientRestart\n")
-		ge.SceneMng.MoveScene(SceneMatchmaking)
 	})
 
 	flag.Parse()
