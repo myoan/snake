@@ -27,13 +27,15 @@ func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
 func (scene *MenuScene) Start() {
 	if scene.UI.Score < 0 {
 		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s, Score: -", scene.UI.UUID),
+			fmt.Sprintf("ID: %s", scene.UI.UUID),
+			"Score: -",
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
 	} else {
 		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s, Score: %d", scene.UI.UUID, scene.UI.Score),
+			fmt.Sprintf("ID: %s", scene.UI.UUID),
+			fmt.Sprintf("Score: %d", scene.UI.Score),
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
@@ -50,13 +52,15 @@ func (scene *MenuScene) Update() (engine.SceneType, error) {
 
 	if scene.UI.Score < 0 {
 		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s, Score: -", scene.UI.UUID),
+			fmt.Sprintf("ID: %s", scene.UI.UUID),
+			"Score: -",
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
 	} else {
 		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s, Score: %d", scene.UI.UUID, scene.UI.Score),
+			fmt.Sprintf("ID: %s", scene.UI.UUID),
+			fmt.Sprintf("Score: %d", scene.UI.Score),
 			"Press Space / Enter to Start",
 			"Press Esc to Quit",
 		})
@@ -86,7 +90,16 @@ func (scene *MatchmakingScene) Start() {
 }
 
 func (scene *MatchmakingScene) Update() (engine.SceneType, error) {
-	return SceneTypeIngame, nil
+	if scene.Input.KeyEsc {
+		return SceneTypeNone, ErrIngameQuited
+	}
+	if scene.UI.Status == StatusStart {
+		return SceneTypeIngame, nil
+	}
+	scene.UI.DrawMenu([]string{
+		"waiting for matchmaking...",
+	})
+	return SceneTypeMatchmaking, nil
 }
 
 func (scene *MatchmakingScene) Finish() {

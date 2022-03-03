@@ -81,6 +81,9 @@ func main() {
 			logger.Println("unmarshal:", err)
 			return err
 		}
+		if ui.Status == StatusInit {
+			ui.Status = StatusStart
+		}
 		board := generateBoard(resp.Body.Width, resp.Body.Height, resp.Body.Board)
 		ui.Draw(board)
 		return nil
