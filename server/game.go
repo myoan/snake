@@ -44,8 +44,7 @@ func (ge *GameEngine) ReachMaxClient() bool {
 func (ge *GameEngine) ExecuteIngame() {
 	players := make([]*Player, len(ge.Clients))
 	for i, c := range ge.Clients {
-		// TODO: Do not use magic number
-		players[i] = NewPlayer(c, c.Stream(), 40, 40)
+		players[i] = NewPlayer(c, c.Stream(), Width, Height)
 	}
 	event := make(chan Event)
 
