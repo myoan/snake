@@ -90,6 +90,13 @@ func main() {
 		log.Printf("Scene: Ingame, ignore\n")
 		ta := args.(TriggerArgument)
 		ge.DeleteClient(ta.Client.ID())
+
+		data := &api.EventResponse{
+			Status: api.GameStatusError,
+		}
+
+		bytes, _ := json.Marshal(&data)
+		ta.Client.Send(bytes)
 	})
 
 	ge.SceneMng.AddHandler(EventClientFinish, SceneIngame, func(args interface{}) {

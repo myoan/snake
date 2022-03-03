@@ -96,6 +96,9 @@ func (scene *MatchmakingScene) Update() (engine.SceneType, error) {
 	if scene.UI.Status == StatusStart {
 		return SceneTypeIngame, nil
 	}
+	if scene.UI.Status == StatusDrop {
+		return SceneTypeMenu, nil
+	}
 	scene.UI.DrawMenu([]string{
 		"waiting for matchmaking...",
 	})

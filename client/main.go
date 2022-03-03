@@ -98,7 +98,12 @@ func main() {
 
 		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
 		ui.Status = StatusDrop
-		ui.Score = resp.Body.Players[0].Size
+		for _, p := range resp.Body.Players {
+			if p.ID == ui.UUID {
+				ui.Score = p.Size
+				break
+			}
+		}
 		return fmt.Errorf("error")
 	})
 	ui.AddHandler(api.GameStatusWaiting, func(message []byte) error {
