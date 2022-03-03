@@ -108,7 +108,7 @@ func NewIngameScene(input *engine.Input, ui *UserInterface) *IngameScene {
 func (scene *IngameScene) Start() {}
 
 func (scene *IngameScene) Update() (engine.SceneType, error) {
-	if scene.UI.Status != 0 {
+	if scene.UI.Status == StatusDrop {
 		return SceneTypeMenu, nil
 	}
 	return SceneTypeIngame, nil

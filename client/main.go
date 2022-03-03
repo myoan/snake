@@ -19,6 +19,10 @@ const (
 	SceneTypeMenu
 	SceneTypeMatchmaking
 	SceneTypeIngame
+
+	StatusInit = iota
+	StatusStart
+	StatusDrop
 )
 
 var (
@@ -90,7 +94,7 @@ func main() {
 		}
 
 		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
-		ui.Status = api.GameStatusError
+		ui.Status = StatusDrop
 		ui.Score = resp.Body.Players[0].Size
 		return fmt.Errorf("error")
 	})

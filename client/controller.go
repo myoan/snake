@@ -46,7 +46,7 @@ func NewUserInterface(uuid string, event chan<- engine.ControlEvent, webEvent ch
 	fm := make(map[int]func([]byte) error)
 
 	ui := &UserInterface{
-		Status:   0,
+		Status:   StatusInit,
 		Score:    -1,
 		UUID:     uuid,
 		screen:   s,
@@ -259,6 +259,6 @@ func (ui *UserInterface) CloseWebSocket() {
 	// TODO: Does it exist other good way? (ex. wait for server response)
 	time.Sleep(300 * time.Millisecond)
 
-	ui.Status = 0
+	ui.Status = StatusInit
 	ui.conn.Close()
 }
