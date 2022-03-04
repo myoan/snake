@@ -2,3 +2,4 @@
 bin/*
 !log/.gitkeep
 log/*
+frontend/node_modules
