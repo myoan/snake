@@ -1,8 +1,8 @@
 import 'phaser';
 
+const WINDOW_WIDTH = 1200;
+const WINDOW_HEIGHT = 1000;
 const CELL_PX = 16;
-const X = 100
-const Y = 100
 
 export class Board {
   scene: Phaser.Scene;
@@ -33,37 +33,25 @@ export class Board {
     }
   }
 
-  // TODO: I want merge bellow two functions
-  forceDraw(data: integer[][]) {
-    for (let i = 0; i < this.height; i++) {
-      for (let j = 0; j < this.width; j++) {
-        const x = X + j * (CELL_PX+4);
-        const y = Y + i * (CELL_PX+4);
-        if (this.raw[i][j] < 0) {
-          this.scene.add.rectangle(x, y, CELL_PX, CELL_PX, 0xff9999);
-        } else if (this.raw[i][j] > 0) {
-          this.scene.add.rectangle(x, y, CELL_PX, CELL_PX, 0xcccccc);
-        } else {
-          this.scene.add.rectangle(x, y, CELL_PX, CELL_PX, 0x000000);
-          var cell = this.scene.add.rectangle(x, y, CELL_PX, CELL_PX);
-          cell.setStrokeStyle(1, 0x1a65ac);
-        }
-      }
-    }
-  }
-
-  draw(data: integer[][]) {
-    if (data.length == 0) {
+  draw(data: integer[][], force: Boolean = false) {
+    if (!force && data.length == 0) {
       data = this.raw
     }
+
+    const widthPx = this.width * (CELL_PX+4)
+    const heightPx = this.height * (CELL_PX+4)
+
+    const xPad = (WINDOW_WIDTH - widthPx) / 2
+    const yPad = (WINDOW_HEIGHT - heightPx) / 2
+
     for (let i = 0; i < this.height; i++) {
       for (let j = 0; j < this.width; j++) {
-        if (this.raw[i][j] == data[i][j]) {
+        if (!force && this.raw[i][j] == data[i][j]) {
           continue;
         }
         this.raw[i][j] = data[i][j]
-        const x = X + j * (CELL_PX+4);
-        const y = Y + i * (CELL_PX+4);
+        const x = xPad + j * (CELL_PX+4);
+        const y = yPad + i * (CELL_PX+4);
         if (this.raw[i][j] < 0) {
           this.scene.add.rectangle(x, y, CELL_PX, CELL_PX, 0xff9999);
         } else if (this.raw[i][j] > 0) {

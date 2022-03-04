@@ -9,6 +9,19 @@ const MOVE_UP = 2;
 const MOVE_DOWN = 3;
 
 let text: Phaser.GameObjects.Text;
+
+function arrayTo2DArray(arry: integer[], width: integer, height: integer): integer[][] {
+  const result = new Array();
+  for (let i = 0; i < height; i++) {
+    result[i] = new Array(width).fill(0)
+  }
+  for (let i = 0; i < height; i++) {
+    for (let j = 0; j < width; j++) {
+      result[i][j] = arry[i*height + j]
+    }
+  }
+  return result
+}
 export default class Game extends Phaser.Scene {
   id: String;
   board: Board;
@@ -23,11 +36,9 @@ export default class Game extends Phaser.Scene {
     this.id = id;
     this.conn = conn;
     this.board = new Board(this, SCREEN_WIDTH_CELL, SCREEN_HEIGHT_CELL);
-    const boardData = new Array();
-    for (let i = 0; i < SCREEN_HEIGHT_CELL; i++) {
-      boardData[i] = new Array(SCREEN_WIDTH_CELL).fill(0)
-    }
-    this.board.forceDraw(boardData);
+    const initArray = new Array(SCREEN_HEIGHT_CELL * SCREEN_WIDTH_CELL).fill(0);
+    this.board.draw(arrayTo2DArray(initArray, SCREEN_WIDTH_CELL, SCREEN_HEIGHT_CELL), true);
+
     this.input.keyboard.on('keydown-W', () => { this.sendDirection(MOVE_UP) }, this)
     this.input.keyboard.on('keydown-A', () => { this.sendDirection(MOVE_LEFT) }, this)
     this.input.keyboard.on('keydown-S', () => { this.sendDirection(MOVE_DOWN) }, this)
@@ -38,12 +49,7 @@ export default class Game extends Phaser.Scene {
       switch(data.status) {
         case 1: // GameStatusOk
           const body = data.body
-          for (let i = 0; i < SCREEN_HEIGHT_CELL; i++) {
-            for (let j = 0; j < SCREEN_WIDTH_CELL; j++) {
-              boardData[i][j] = body.board[i*SCREEN_HEIGHT_CELL + j]
-            }
-          }
-          this.board.draw(boardData);
+          this.board.draw(arrayTo2DArray(body.board, SCREEN_WIDTH_CELL, SCREEN_HEIGHT_CELL));
           break;
 
         case 2: // GameStatusError
