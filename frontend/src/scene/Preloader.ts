@@ -1,70 +1,56 @@
 import 'phaser';
-import TextureKey from '../enum/TextureKey';
 
+let text: Phaser.GameObjects.Text;
 export default class Preloader extends Phaser.Scene {
+  id: String;
   graphics: Phaser.GameObjects.Graphics;
   conn: WebSocket;
+  dotNum: integer;
+  tick: integer;
 
-  constructor() {
+  constructor(id: String, score: integer) {
     super('preloader');
   }
 
-  preload() {
-    this.graphics = this.add.graphics();
-    this.definePlayerTexture();
-    this.defineBullet();
-    this.conn = new WebSocket('ws://' + document.location.hostname + ':8008/ws');
+  create(args) {
+    const id = args[0];
+    const score = args[1] | 0;
+    const content = [
+      `ID: ${id}`,
+      `Score: ${score}`,
+      "[ENTER] -> Game Start"
+    ]
+    this.id = id;
+    text = this.add.text(100, 100, content, { fontFamily: 'Arial', color: '#00ff00' });
+
+    this.input.keyboard.on('keydown-ENTER', () => { this.connect() }, this);
   }
 
-  private definePlayerTexture() {
-    this.graphics.fillStyle(0x00fd00, 1.0);
-    this.graphics.fillCircle(30, 30, 20);
+  connect() {
+    console.log("connect")
+    this.conn = new WebSocket('ws://' + document.location.hostname + ':8080/ingame');
 
-    this.graphics.lineStyle(1, 0x00fd00, 1);
-    this.graphics.beginPath();
-    this.graphics.moveTo(30, 0);
-    this.graphics.lineTo(24, 6);
-    this.graphics.lineTo(36, 6);
-    this.graphics.closePath();
-    this.graphics.fillPath();
-    this.graphics.generateTexture(TextureKey.Ship, 60, 60);
-    this.graphics.clear();
-  }
+    this.conn.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      switch(data.status) {
+        case 0: // GameStatusInit
+          this.id = data.id
+          break;
 
-  defineBullet() {
-    this.graphics.fillStyle(0x00fd00, 1.0);
-    this.graphics.fillCircle(2, 2, 2);
-    this.graphics.generateTexture(TextureKey.Bullet, 4, 4);
-    this.graphics.clear();
-  }
+        case 1: // GameStatusOk
+          this.scene.start('game', [this.id, this.conn])
+          break
 
-  drawMap(width: number, height: number) {
-    // draw Outline
-    this.graphics.lineStyle(5, 0x00fd00, 1);
-    this.graphics.beginPath();
-    this.graphics.moveTo(0, 0);
-    this.graphics.lineTo(0, height);
-    this.graphics.lineTo(width, height);
-    this.graphics.lineTo(width, 0);
-    this.graphics.closePath();
-    this.graphics.strokePath();
+        case 3: // GameStatusWaiting...
+          console.log(`waiting ...`)
 
-    // draw Mesh
-    this.graphics.lineStyle(1, 0x00fd00, 1);
-    this.graphics.beginPath();
+          text.destroy();
+          text = this.add.text(100, 100, "waiting...", { fontFamily: 'Arial', color: '#00ff00' });
+          break;
 
-    for (let i = 1; i <= 10; i++) {
-      this.graphics.moveTo(width * i / 10, 0);
-      this.graphics.lineTo(width * i / 10, height);
-    }
-    for (let i = 1; i <= 10; i++) {
-      this.graphics.moveTo(0, height * i / 10);
-      this.graphics.lineTo(width, height * i / 10);
-    }
-    this.graphics.strokePath();
-  }
-
-  create() {
-    this.scene.start('game', this.conn);
+        default:
+          console.log(`data(${data.status}): ${data}`)
+      }
+    };
   }
 }
