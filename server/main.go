@@ -65,7 +65,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	addr := flag.String("addr", "localhost:8080", "http service address")
+	addr := flag.String("addr", ":8080", "http service address")
 	ge := NewGameEngine()
 
 	ge.SceneMng.AddHandler(EventClientConnect, SceneMatchmaking, func(args interface{}) {
@@ -114,6 +114,9 @@ func main() {
 		ingameHandler(ge.SceneMng, w, r)
 	})
 	http.HandleFunc("/", home)
+	http.HandleFunc("/hoge", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, world"))
+	})
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
