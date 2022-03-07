@@ -28,8 +28,7 @@ export default class Preloader extends Phaser.Scene {
 
   connect() {
     console.log("connect")
-    this.conn = new WebSocket('ws://192.168.49.2:31290/ingame');
-    // this.conn = new WebSocket('ws://' + document.location.hostname + ':31290/ingame');
+    this.conn = new WebSocket('ws://' + document.location.hostname + '/ingame');
 
     this.conn.onmessage = (event) => {
       const data = JSON.parse(event.data);
