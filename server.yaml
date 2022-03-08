@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: snake-server
-        image: snake-server:1.0
+        image: snake-server:1.0.1
         imagePullPolicy: IfNotPresent
       - name: snake-frontend
         image: snake-frontend:1.0.6
