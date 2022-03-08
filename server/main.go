@@ -1,16 +1,13 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"time"
 
-	sdk "agones.dev/agones/sdks/go"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/myoan/snake/api"
@@ -121,32 +118,7 @@ func main() {
 		w.Write([]byte("Hello, world"))
 	})
 
-	s, err := sdk.NewSDK()
-	if err != nil {
-		log.Fatalf("Failed to create SDK: %v", err)
-	}
-	ctx, _ := context.WithCancel(context.Background())
-	doHealth(s, ctx)
-
 	log.Fatal(http.ListenAndServe(*addr, nil))
-}
-
-func doHealth(s *sdk.SDK, ctx context.Context) {
-	tick := time.Tick(2 * time.Second)
-	for {
-		log.Printf("Health check")
-		err := s.Health()
-		if err != nil {
-			log.Fatalf("Could not send health ping, %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			log.Printf("Stopped health ping")
-			return
-		case <-tick:
-		}
-	}
-
 }
 
 var homeTemplate = template.Must(template.New("").Parse(`
