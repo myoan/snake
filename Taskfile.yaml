@@ -34,16 +34,14 @@ tasks:
         - task: docker_frontend
         - task: docker_gameserver
   docker_backend:
-    dir: backend
     cmds:
-      - docker build -t snake-backend:latest .
+      - docker build -f docker/Dockerfile.backend -t snake-backend:latest .
   docker_frontend:
-    dir: frontend
     cmds:
-      - docker build -t snake-frontend:latest .
+      - docker build -f docker/Dockerfile.frontend -t snake-frontend:latest .
   docker_game:
     cmds:
-      - docker build -t snake-gameserver:latest .
+      - docker build -f docker/Dockerfile.gameserver -t snake-gameserver:latest .
   k8s_server:
     cmds:
       - kubectl apply -f ./server.yaml

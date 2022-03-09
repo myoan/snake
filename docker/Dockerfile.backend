@@ -1,0 +1,18 @@
+# build
+FROM golang:1.17.2 as builder
+WORKDIR /go/src/backend
+
+COPY backend/main.go .
+RUN go mod init && go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
+
+# final image
+FROM alpine:3.14
+
+RUN adduser -D -u 1000 server
+COPY --from=builder /go/src/backend/server /home/server/server
+RUN chown -R server /home/server && \
+    chmod o+x /home/server/server
+
+USER 1000
+ENTRYPOINT ["/home/server/server"]

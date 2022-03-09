@@ -1,0 +1,17 @@
+FROM node:lts-alpine as builder
+WORKDIR /app
+COPY frontend/package.json /app
+COPY frontend/package-lock.json /app
+RUN npm install
+
+COPY frontend/app.ts /app
+COPY frontend/src /app/src
+COPY frontend/tsconfig.json /app
+COPY frontend/webpack.config.js /app
+RUN npm run build
+
+FROM nginx:stable-alpine 
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY frontend/nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
