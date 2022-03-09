@@ -3,15 +3,15 @@ FROM golang:1.17.2 as builder
 WORKDIR /go/src/gameserver
 
 COPY api ./api
-COPY server ./server
+COPY gameserver ./gameserver
 RUN go mod init && go mod tidy -compat=1.17
-RUN cd server; CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
+RUN cd gameserver; CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
 
 # final image
 FROM alpine:3.14
 
 RUN adduser -D -u 1000 server
-COPY --from=builder /go/src/gameserver/server/server /home/server/server
+COPY --from=builder /go/src/gameserver/gameserver/server /home/server/server
 RUN chown -R server /home/server && \
     chmod o+x /home/server/server
 
