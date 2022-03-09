@@ -27,3 +27,25 @@ tasks:
     cmds:
       - rm -rf {{.BINARY_DIR}}/*
       - rm -rf {{.LOG_DIR}}/*
+  docker:
+    build:
+      cmds:
+        - task: docker_backend
+        - task: docker_frontend
+        - task: docker_gameserver
+  docker_backend:
+    dir: backend
+    cmds:
+      - docker build -t snake-backend:latest .
+  docker_frontend:
+    dir: frontend
+    cmds:
+      - docker build -t snake-front:latest .
+  docker_gameserver:
+    dir: gameserver
+    cmds:
+      - docker build -t snake-gameserver:latest .
+  k8s_server:
+    - kubectl apply -f server.yml
+  k8s_game:
+    - kubectl apply -f gameserver.yml

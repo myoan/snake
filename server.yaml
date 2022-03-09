@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: snake-frontend
-        image: snake-frontend:1.0.6
+        image: snake-frontend:latest
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
@@ -35,7 +35,7 @@ spec:
       serviceAccountName: agones-sdk
       containers:
       - name: snake-backend
-        image: snake-backend:1.0.0
+        image: snake-backend:latest
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
@@ -72,6 +72,8 @@ metadata:
   name: snake
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "http://api.snake-game.myoan.dev"
 spec:
   rules:
     - host: snake-game.myoan.dev

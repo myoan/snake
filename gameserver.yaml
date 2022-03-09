@@ -23,12 +23,12 @@ spec:
       ports:
       - name: default
         portPolicy: Dynamic
-        containerPort: 7654
+        containerPort: 8080
       template:
         spec:
           containers:
           - name: snake-gameserver
-            image: snake-gameserver:1.0.2
+            image: snake-gameserver:latest
             imagePullPolicy: IfNotPresent
             resources:
               requests:
