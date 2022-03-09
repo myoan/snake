@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	v1 "agones.dev/agones/pkg/apis/agones/v1"
 	"agones.dev/agones/pkg/client/clientset/versioned"
 	"agones.dev/agones/pkg/util/runtime"
 	"github.com/gin-gonic/gin"
@@ -12,8 +13,9 @@ import (
 )
 
 type GameServerSchema struct {
-	IP   string `json:"ip"`
-	Port int    `json:"port"`
+	IP    string `json:"ip"`
+	State string `json:"state"`
+	Port  int    `json:"port"`
 }
 
 func RoomHandler(c *gin.Context) {
@@ -35,6 +37,10 @@ func RoomHandler(c *gin.Context) {
 
 	c.Writer.Header().Set("Access-Control-Allow-Origin", "http://snake-game.myoan.dev")
 	for _, item := range result.Items {
+		if item.Status.State != v1.GameServerStateReady {
+			continue
+		}
+
 		ports := item.Status.Ports
 		if len(ports) < 1 {
 			continue
@@ -42,8 +48,9 @@ func RoomHandler(c *gin.Context) {
 
 		port := int(item.Status.Ports[0].Port)
 		s := GameServerSchema{
-			IP:   item.Status.Address,
-			Port: port,
+			IP:    item.Status.Address,
+			State: string(item.Status.State),
+			Port:  port,
 		}
 		c.JSON(http.StatusOK, s)
 		return
