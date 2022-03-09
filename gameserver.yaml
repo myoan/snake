@@ -23,7 +23,14 @@ spec:
       ports:
       - name: default
         portPolicy: Dynamic
-        containerPort: 8080
+        protocol: TCP
+        containerPort: 8082
+      health:
+        disabled: false
+        initialDelaySeconds: 30
+        failureThreshold: 100
+      sdkServer:
+        logLevel: Debug
       template:
         spec:
           containers:

@@ -40,9 +40,8 @@ tasks:
   docker_frontend:
     dir: frontend
     cmds:
-      - docker build -t snake-front:latest .
-  docker_gameserver:
-    dir: gameserver
+      - docker build -t snake-frontend:latest .
+  docker_game:
     cmds:
       - docker build -t snake-gameserver:latest .
   k8s_server:

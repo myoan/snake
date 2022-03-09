@@ -1,4 +1,5 @@
 import 'phaser';
+import axios from 'axios';
 
 let text: Phaser.GameObjects.Text;
 export default class Preloader extends Phaser.Scene {
@@ -18,17 +19,30 @@ export default class Preloader extends Phaser.Scene {
     const content = [
       `ID: ${id}`,
       `Score: ${score}`,
-      "[ENTER] -> Game Start"
+      "[ENTER] -> Game Start!!"
     ]
     this.id = id;
-    text = this.add.text(100, 100, content, { fontFamily: 'Arial', color: '#00ff00' });
 
-    this.input.keyboard.on('keydown-ENTER', () => { this.connect() }, this);
+    text = this.add.text(100, 100, content, { fontFamily: 'Arial', color: '#00ff00' });
+    console.log('get api.snake-game.myoan.dev/room');
+
+    const scene = this;
+
+    axios.get('http://api.snake-game.myoan.dev/room')
+      .then(function (resp) {
+        console.log(resp);
+        const data = resp.data;
+
+        scene.input.keyboard.on('keydown-ENTER', () => { scene.connect(data.ip, data.port) }, scene);
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
-  connect() {
-    console.log("connect")
-    this.conn = new WebSocket('ws://' + document.location.hostname + '/ingame');
+  connect(ip: String, port: integer) {
+    console.log("connect " + ip + port.toString());
+    this.conn = new WebSocket('ws://' + ip + ":" + port.toString() + '/');
 
     this.conn.onmessage = (event) => {
       const data = JSON.parse(event.data);

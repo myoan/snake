@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
+	"time"
 
+	sdk "agones.dev/agones/sdks/go"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/myoan/snake/api"
@@ -60,13 +62,39 @@ func ingameHandler(mng *SceneManager, w http.ResponseWriter, r *http.Request) {
 	client.Notify(EventClientConnect)
 }
 
+/*
 func home(w http.ResponseWriter, r *http.Request) {
 	homeTemplate.Execute(w, "ws://"+r.Host+"/ingame")
 }
+*/
+
+// doSignal shutsdown on SIGTERM/SIGKILL
+/*
+func doSignal() {
+	ctx := signals.NewSigKillContext()
+	<-ctx.Done()
+	log.Println("Exit signal received. Shutting down.")
+	os.Exit(0)
+}
+*/
 
 func main() {
-	addr := flag.String("addr", ":8080", "http service address")
+	log.Print("Creating SDK instance")
+	addr := flag.String("addr", ":8082", "http service address")
 	ge := NewGameEngine()
+	s, err := sdk.NewSDK()
+	if err != nil {
+		log.Fatalf("Could not connect to sdk: %v", err)
+	}
+
+	log.Print("Starting Health Ping")
+	ctx, _ := context.WithCancel(context.Background())
+	go doHealth(s, ctx)
+
+	e := s.Ready()
+	if e != nil {
+		log.Fatalf("hogehoge: %v", e)
+	}
 
 	ge.SceneMng.AddHandler(EventClientConnect, SceneMatchmaking, func(args interface{}) {
 		log.Printf("Scene: MatchMaking (%d)\n", len(ge.Clients))
@@ -75,6 +103,11 @@ func main() {
 		ta.Client.Send([]byte(fmt.Sprintf("{\"status\":%d, \"id\": \"%s\"}", api.GameStatusInit, ta.Client.ID())))
 		if ge.ReachMaxClient() {
 			ge.SceneMng.MoveScene(SceneIngame)
+
+			err = s.Allocate()
+			if err != nil {
+				log.Fatalf("Failed to Allocate: %v", err)
+			}
 
 			ge.ExecuteIngame()
 		} else {
@@ -106,27 +139,29 @@ func main() {
 		ge.DeleteClient(ta.Client.ID())
 		if ge.Ingame.isFinish() {
 			ge.SceneMng.MoveScene(SceneMatchmaking)
+
+			err = s.Shutdown()
+			if err != nil {
+				log.Fatalf("Failed to Shutdown: %v", err)
+			}
 		}
 	})
 
 	flag.Parse()
-	http.HandleFunc("/ingame", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ingameHandler(ge.SceneMng, w, r)
-	})
-	http.HandleFunc("/", home)
-	http.HandleFunc("/hoge", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, world"))
 	})
 
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
+/*
 var homeTemplate = template.Must(template.New("").Parse(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<script>  
+<script>
 window.addEventListener("load", function(evt) {
     var output = document.getElementById("output");
     var input = document.getElementById("input");
@@ -178,8 +213,8 @@ window.addEventListener("load", function(evt) {
 <body>
 <table>
 <tr><td valign="top" width="50%">
-<p>Click "Open" to create a connection to the server, 
-"Send" to send a message to the server and "Close" to close the connection. 
+<p>Click "Open" to create a connection to the server,
+"Send" to send a message to the server and "Close" to close the connection.
 You can change the message and send multiple times.
 <p>
 <form>
@@ -194,3 +229,22 @@ You can change the message and send multiple times.
 </body>
 </html>
 `))
+*/
+
+// doHealth sends the regular Health Pings
+func doHealth(sdk *sdk.SDK, ctx context.Context) {
+	tick := time.Tick(2 * time.Second)
+	for {
+		log.Printf("Health Ping")
+		err := sdk.Health()
+		if err != nil {
+			log.Fatalf("Could not send health ping, %v", err)
+		}
+		select {
+		case <-ctx.Done():
+			log.Print("Stopped health pings")
+			return
+		case <-tick:
+		}
+	}
+}

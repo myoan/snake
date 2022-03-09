@@ -33,6 +33,7 @@ func RoomHandler(c *gin.Context) {
 		panic(err)
 	}
 
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "http://snake-game.myoan.dev")
 	for _, item := range result.Items {
 		ports := item.Status.Ports
 		if len(ports) < 1 {
