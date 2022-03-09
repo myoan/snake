@@ -16,6 +16,7 @@ type GameEngine struct {
 }
 
 func NewGameEngine() *GameEngine {
+	rand.Seed(time.Now().Unix())
 	clients := make([]Client, 0)
 	mng := NewSceneManager()
 	return &GameEngine{
