@@ -35,6 +35,8 @@ func RoomHandler(c *gin.Context) {
 		panic(err)
 	}
 
+	var schema GameServerSchema
+	minport := 100000
 	c.Writer.Header().Set("Access-Control-Allow-Origin", "http://snake-game.myoan.dev")
 	for _, item := range result.Items {
 		if item.Status.State != v1.GameServerStateReady {
@@ -47,16 +49,22 @@ func RoomHandler(c *gin.Context) {
 		}
 
 		port := int(item.Status.Ports[0].Port)
-		s := GameServerSchema{
-			IP:    item.Status.Address,
-			State: string(item.Status.State),
-			Port:  port,
+		if minport > port {
+			schema = GameServerSchema{
+				IP:    item.Status.Address,
+				State: string(item.Status.State),
+				Port:  port,
+			}
+			minport = port
 		}
-		c.JSON(http.StatusOK, s)
-		return
 	}
 
-	c.JSON(http.StatusNotFound, gin.H{"msg": "Ready state server not found."})
+	if minport == 100000 {
+		c.JSON(http.StatusNotFound, gin.H{"msg": "Ready state server not found."})
+	} else {
+		c.JSON(http.StatusOK, schema)
+	}
+
 }
 
 func main() {
