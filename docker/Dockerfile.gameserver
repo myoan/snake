@@ -1,11 +1,20 @@
+# build
 FROM golang:1.17.2 as builder
-WORKDIR /go/src/snake
+WORKDIR /go/src/gameserver
 
-COPY ./api /go/src/snake/api
-COPY server /go/src/snake/server
-COPY go.mod .
-COPY go.sum .
+COPY api ./api
+COPY server ./server
+RUN go mod init && go mod tidy -compat=1.17
+RUN cd server; CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
 
-RUN cd server; GCO_ENABLED=0 GOOS=linux go build -o gameserver .
+# final image
+FROM alpine:3.14
+
+RUN adduser -D -u 1000 server
+COPY --from=builder /go/src/gameserver/server/server /home/server/server
+RUN chown -R server /home/server && \
+    chmod o+x /home/server/server
+
 EXPOSE 8082
-CMD ["/go/src/snake/server/gameserver"]
+USER 1000
+ENTRYPOINT ["/home/server/server"]
