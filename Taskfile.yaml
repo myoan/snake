@@ -46,6 +46,8 @@ tasks:
     cmds:
       - docker build -t snake-gameserver:latest .
   k8s_server:
-    - kubectl apply -f server.yml
+    cmds:
+      - kubectl apply -f ./server.yaml
   k8s_game:
-    - kubectl apply -f gameserver.yml
+    cmds:
+      - kubectl apply -f ./gameserver.yaml
