@@ -32,7 +32,7 @@ tasks:
       cmds:
         - task: docker_backend
         - task: docker_frontend
-        - task: docker_gameserver
+        - task: docker_game
   docker_backend:
     cmds:
       - docker build -f docker/Dockerfile.backend -t snake-backend:latest .
