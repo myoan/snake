@@ -16,11 +16,10 @@ import (
 )
 
 const (
-	Width    = 40
-	Height   = 40
-	InitX    = 20
-	InitY    = 20
-	InitSize = 3
+	Width     = 40
+	Height    = 40
+	InitSize  = 3
+	PlayerNum = 2
 )
 
 const (
@@ -87,7 +86,7 @@ func main() {
 
 	e := s.Ready()
 	if e != nil {
-		log.Fatalf("hogehoge: %v", e)
+		log.Fatalf("Agones SDK: Failed to Ready: %v", e)
 	}
 
 	ge.SceneMng.AddHandler(EventClientConnect, SceneMatchmaking, func(args interface{}) {
@@ -100,7 +99,7 @@ func main() {
 
 			err = s.Allocate()
 			if err != nil {
-				log.Fatalf("Failed to Allocate: %v", err)
+				log.Fatalf("Agones SDK: Failed to Allocate: %v", err)
 			}
 
 			ge.ExecuteIngame()
@@ -132,11 +131,9 @@ func main() {
 		ta := args.(TriggerArgument)
 		ge.DeleteClient(ta.Client.ID())
 		if ge.Ingame.isFinish() {
-			ge.SceneMng.MoveScene(SceneMatchmaking)
-
 			err = s.Shutdown()
 			if err != nil {
-				log.Fatalf("Failed to Shutdown: %v", err)
+				log.Fatalf("Agones SDK: Failed to Shutdown: %v", err)
 			}
 		}
 	})

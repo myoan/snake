@@ -71,28 +71,40 @@ kind: Ingress
 metadata:
   name: snake
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "http://api.snake-game.myoan.dev"
+    # nginx.ingress.kubernetes.io/rewrite-target: /$1
+    kubernetes.io/ingress.global-static-ip-name: "snake-ip"
+    networking.gke.io/managed-certificates: managed-cert
+    kubernetes.io/ingress.class: "gce"
 spec:
   rules:
-    - host: snake-game.myoan.dev
+    - host: snake.game.myoan.dev
       http:
         paths:
-          - path: /(.*)
-            pathType: Prefix
+          - path: /*
+            pathType: ImplementationSpecific
+            # pathType: Prefix
             backend:
               service:
                 name: snake-ui
                 port:
                   number: 80
-    - host: api.snake-game.myoan.dev
+    - host: api.snake.game.myoan.dev
       http:
         paths:
-          - path: /(.*)
-            pathType: Prefix
+          - path: /*
+            # pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: snake-api
                 port:
                   number: 8080
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: managed-cert
+spec:
+  domains:
+    - snake.game.myoan.dev
+    - api.snake.game.myoan.dev

@@ -29,9 +29,9 @@ export default class Preloader extends Phaser.Scene {
 
   connect() {
     const scene = this;
-    console.log('get api.snake-game.myoan.dev/room');
+    console.log('get api.snake.game.myoan.dev/room');
 
-    axios.get('http://api.snake-game.myoan.dev/room')
+    axios.get('http://api.snake.game.myoan.dev/room')
       .then(function (resp) {
         const data = resp.data;
 

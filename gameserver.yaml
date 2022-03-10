@@ -13,8 +13,8 @@ spec:
         containerPort: 8082
       health:
         disabled: false
-        initialDelaySeconds: 30
-        failureThreshold: 100
+        initialDelaySeconds: 5
+        failureThreshold: 10
       sdkServer:
         logLevel: Debug
       template:

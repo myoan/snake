@@ -37,7 +37,7 @@ func RoomHandler(c *gin.Context) {
 
 	var schema GameServerSchema
 	minport := 100000
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "http://snake-game.myoan.dev")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "http://snake.game.myoan.dev")
 	for _, item := range result.Items {
 		if item.Status.State != v1.GameServerStateReady {
 			continue

@@ -39,7 +39,7 @@ func (ge *GameEngine) DeleteClient(cid string) {
 }
 
 func (ge *GameEngine) ReachMaxClient() bool {
-	return len(ge.Clients) >= 2
+	return len(ge.Clients) >= PlayerNum
 }
 
 func (ge *GameEngine) ExecuteIngame() {
@@ -265,7 +265,6 @@ func (game *Game) Run() {
 	defer t.Stop()
 
 	for range t.C {
-		log.Println("tick")
 		for _, p := range game.players {
 			if p.State == 1 {
 				continue
