@@ -148,9 +148,8 @@ func main() {
 
 // doHealth sends the regular Health Pings
 func doHealth(sdk *sdk.SDK, ctx context.Context) {
-	tick := time.Tick(2 * time.Second)
+	tick := time.Tick(4 * time.Second)
 	for {
-		log.Printf("Health Ping")
 		err := sdk.Health()
 		if err != nil {
 			log.Fatalf("Could not send health ping, %v", err)

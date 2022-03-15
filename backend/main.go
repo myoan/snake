@@ -18,6 +18,10 @@ type GameServerSchema struct {
 	Port  int    `json:"port"`
 }
 
+func HealthHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, "hoge")
+}
+
 func RoomHandler(c *gin.Context) {
 	config, err := rest.InClusterConfig()
 	logger := runtime.NewLoggerWithSource("main")
@@ -37,7 +41,7 @@ func RoomHandler(c *gin.Context) {
 
 	var schema GameServerSchema
 	minport := 100000
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "http://snake.game.myoan.dev")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "https://snake.game.myoan.dev")
 	for _, item := range result.Items {
 		if item.Status.State != v1.GameServerStateReady {
 			continue
@@ -69,6 +73,7 @@ func RoomHandler(c *gin.Context) {
 
 func main() {
 	r := gin.Default()
+	r.GET("/", HealthHandler)
 	r.GET("/room", RoomHandler)
 	r.Run()
 }

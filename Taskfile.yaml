@@ -33,15 +33,18 @@ tasks:
         - task: docker_backend
         - task: docker_frontend
         - task: docker_game
+  docker_nginx:
+    cmds:
+      - docker build -f docker/Dockerfile.nginx -t gcr.io/yoan-dev-313023/snake-nginx:1.0.0 .
   docker_backend:
     cmds:
-      - docker build -f docker/Dockerfile.backend -t snake-backend:latest .
+      - docker build -f docker/Dockerfile.backend -t gcr.io/yoan-dev-313023/snake-backend:1.0.1 .
   docker_frontend:
     cmds:
-      - docker build -f docker/Dockerfile.frontend -t snake-frontend:latest .
+      - docker build -f docker/Dockerfile.frontend -t gcr.io/yoan-dev-313023/snake-frontend:1.0.20 .
   docker_game:
     cmds:
-      - docker build -f docker/Dockerfile.gameserver -t snake-gameserver:latest .
+      - docker build -f docker/Dockerfile.gameserver -t gcr.io/yoan-dev-313023/snake-gameserver:1.0.0 .
   k8s_server:
     cmds:
       - kubectl apply -f ./server.yaml

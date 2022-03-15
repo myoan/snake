@@ -1,5 +1,5 @@
-import 'phaser';
 import axios from 'axios';
+import 'phaser';
 
 let text: Phaser.GameObjects.Text;
 export default class Preloader extends Phaser.Scene {
@@ -31,7 +31,7 @@ export default class Preloader extends Phaser.Scene {
     const scene = this;
     console.log('get api.snake.game.myoan.dev/room');
 
-    axios.get('http://api.snake.game.myoan.dev/room')
+    axios.get('https://api.snake.game.myoan.dev/room')
       .then(function (resp) {
         const data = resp.data;
 
@@ -39,7 +39,9 @@ export default class Preloader extends Phaser.Scene {
         scene.port = data.port;
 
         console.log("connect " + scene.ip + ':' + scene.port);
-        scene.conn = new WebSocket('ws://' + scene.ip + ":" + scene.port + '/');
+        scene.conn = new WebSocket('wss://ws.snake.game.myoan.dev:' + scene.port + '/');
+        // scene.conn = new WebSocket('wss://' + scene.ip + ":" + scene.port + '/');
+        // scene.conn = new WebSocket('wss://' + scene.ip + ":" + scene.port + '/');
 
         scene.conn.onmessage = (event) => {
           const data = JSON.parse(event.data);

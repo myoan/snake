@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: snake-frontend
-        image: snake-frontend:latest
+        image: gcr.io/yoan-dev-313023/snake-frontend:1.0.20
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
@@ -35,7 +35,7 @@ spec:
       serviceAccountName: agones-sdk
       containers:
       - name: snake-backend
-        image: snake-backend:latest
+        image: gcr.io/yoan-dev-313023/snake-backend:1.0.1
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
@@ -71,9 +71,8 @@ kind: Ingress
 metadata:
   name: snake
   annotations:
-    # nginx.ingress.kubernetes.io/rewrite-target: /$1
     kubernetes.io/ingress.global-static-ip-name: "snake-ip"
-    networking.gke.io/managed-certificates: managed-cert
+    networking.gke.io/managed-certificates: "managed-cert"
     kubernetes.io/ingress.class: "gce"
 spec:
   rules:
@@ -82,7 +81,16 @@ spec:
         paths:
           - path: /*
             pathType: ImplementationSpecific
-            # pathType: Prefix
+            backend:
+              service:
+                name: snake-ui
+                port:
+                  number: 80
+    - host: ws.snake.game.myoan.dev
+      http:
+        paths:
+          - path: /*
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: snake-ui
@@ -92,7 +100,6 @@ spec:
       http:
         paths:
           - path: /*
-            # pathType: Prefix
             pathType: ImplementationSpecific
             backend:
               service:
@@ -108,3 +115,4 @@ spec:
   domains:
     - snake.game.myoan.dev
     - api.snake.game.myoan.dev
+    - ws.snake.game.myoan.dev

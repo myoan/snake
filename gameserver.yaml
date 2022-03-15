@@ -3,13 +3,14 @@ kind: Fleet
 metadata:
   name: snake-gameserver
 spec:
-  replicas: 2
+  replicas: 1
   template:
     spec:
       ports:
       - name: default
-        portPolicy: Dynamic
+        portPolicy: Static
         protocol: TCP
+        hostPort: 443
         containerPort: 8082
       health:
         disabled: false
@@ -21,7 +22,7 @@ spec:
         spec:
           containers:
           - name: snake-gameserver
-            image: snake-gameserver:latest
+            image: gcr.io/yoan-dev-313023/snake-gameserver:1.0.0
             imagePullPolicy: IfNotPresent
             resources:
               requests:
