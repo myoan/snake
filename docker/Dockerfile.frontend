@@ -7,7 +7,8 @@ RUN npm install
 COPY frontend/app.ts /app
 COPY frontend/src /app/src
 COPY frontend/tsconfig.json /app
-COPY frontend/webpack.config.js /app
+COPY frontend/webpack.common.js /app
+COPY frontend/webpack.prod.js /app
 RUN npm run build
 
 FROM nginx:stable-alpine 

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: snake-frontend
-        image: gcr.io/yoan-dev-313023/snake-frontend:1.0.20
+        image: gcr.io/yoan-dev-313023/snake-frontend:1.0.21
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1

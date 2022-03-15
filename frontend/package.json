@@ -4,9 +4,9 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "build": "webpack",
+    "build": "webpack --config webpack.prod.js",
     "watch": "webpack --watch",
-    "serve": "webpack serve",
+    "serve": "webpack serve --open --config webpack.dev.js",
     "test": "jest",
     "test-watch": "jest --watch",
     "lint": "eslint . --ext .js,.ts,.tsx"
@@ -33,7 +33,8 @@
     "typescript": "^4.2.4",
     "webpack": "^5.36.1",
     "webpack-cli": "^4.6.0",
-    "webpack-dev-server": "^4.7.4"
+    "webpack-dev-server": "^4.7.4",
+    "webpack-merge": "^5.8.0"
   },
   "jest": {
     "moduleFileExtensions": [

@@ -41,7 +41,7 @@ tasks:
       - docker build -f docker/Dockerfile.backend -t gcr.io/yoan-dev-313023/snake-backend:1.0.1 .
   docker_frontend:
     cmds:
-      - docker build -f docker/Dockerfile.frontend -t gcr.io/yoan-dev-313023/snake-frontend:1.0.20 .
+      - docker build -f docker/Dockerfile.frontend -t gcr.io/yoan-dev-313023/snake-frontend:1.0.21 .
   docker_game:
     cmds:
       - docker build -f docker/Dockerfile.gameserver -t gcr.io/yoan-dev-313023/snake-gameserver:1.0.0 .
