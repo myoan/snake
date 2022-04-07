@@ -38,10 +38,8 @@ export default class Preloader extends Phaser.Scene {
         scene.ip = data.ip;
         scene.port = data.port;
 
-        console.log("connect " + scene.ip + ':' + scene.port);
-        scene.conn = new WebSocket('wss://ws.snake.game.myoan.dev:' + scene.port + '/');
-        // scene.conn = new WebSocket('wss://' + scene.ip + ":" + scene.port + '/');
-        // scene.conn = new WebSocket('wss://' + scene.ip + ":" + scene.port + '/');
+        console.log("connect wss://" + scene.ip + ':' + scene.port);
+        scene.conn = new WebSocket('wss://' + scene.ip + ":" + scene.port + '/');
 
         scene.conn.onmessage = (event) => {
           const data = JSON.parse(event.data);

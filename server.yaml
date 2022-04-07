@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: snake-frontend
-        image: gcr.io/yoan-dev-313023/snake-frontend:1.0.21
+        image: gcr.io/yoan-dev-313023/snake-frontend:1.0.23
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: apps/v1
@@ -35,7 +35,7 @@ spec:
       serviceAccountName: agones-sdk
       containers:
       - name: snake-backend
-        image: gcr.io/yoan-dev-313023/snake-backend:1.0.1
+        image: gcr.io/yoan-dev-313023/snake-backend:1.0.8
         imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
@@ -86,16 +86,6 @@ spec:
                 name: snake-ui
                 port:
                   number: 80
-    - host: ws.snake.game.myoan.dev
-      http:
-        paths:
-          - path: /*
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: snake-ui
-                port:
-                  number: 80
     - host: api.snake.game.myoan.dev
       http:
         paths:
@@ -115,4 +105,3 @@ spec:
   domains:
     - snake.game.myoan.dev
     - api.snake.game.myoan.dev
-    - ws.snake.game.myoan.dev

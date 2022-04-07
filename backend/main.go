@@ -55,7 +55,9 @@ func RoomHandler(c *gin.Context) {
 		port := int(item.Status.Ports[0].Port)
 		if minport > port {
 			schema = GameServerSchema{
-				IP:    item.Status.Address,
+				// TODO: change to IP-port.domain.com
+				// IP:    item.Status.Address,
+				IP:    "hoge.in.game.myoan.dev",
 				State: string(item.Status.State),
 				Port:  port,
 			}
@@ -68,7 +70,6 @@ func RoomHandler(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, schema)
 	}
-
 }
 
 func main() {
