@@ -1,138 +1,67 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/myoan/snake/engine"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var (
-	ErrIngameHitWall = errors.New("ingame hit wall")
-	ErrIngameQuited  = errors.New("ingame quited")
-)
-
-type MenuScene struct {
-	Input *engine.Input
-	UI    *UserInterface
+type Scene interface {
+	Start()
+	Update() (SceneType, error)
+	Finish()
+	Draw(*ebiten.Image)
 }
 
-func NewMenuScene(input *engine.Input, ui *UserInterface) *MenuScene {
-	return &MenuScene{
-		Input: input,
-		UI:    ui,
+type SceneType string
+
+type SceneManager struct {
+	scenes           map[SceneType]Scene
+	currentSceneType SceneType
+	currentScene     Scene
+}
+
+func NewSceneManager() *SceneManager {
+	scenes := make(map[SceneType]Scene)
+	return &SceneManager{
+		scenes: scenes,
 	}
 }
 
-func (scene *MenuScene) Start() {
-	if scene.UI.Score < 0 {
-		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s", scene.UI.UUID),
-			"Score: -",
-			"Press Space / Enter to Start",
-			"Press Esc to Quit",
-		})
-	} else {
-		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s", scene.UI.UUID),
-			fmt.Sprintf("Score: %d", scene.UI.Score),
-			"Press Space / Enter to Start",
-			"Press Esc to Quit",
-		})
-	}
+func (mng *SceneManager) AddScene(name SceneType, scene Scene) {
+	mng.scenes[name] = scene
 }
 
-func (scene *MenuScene) Update() (engine.SceneType, error) {
-	if scene.Input.KeySpace {
-		return SceneTypeMatchmaking, nil
-	}
-	if scene.Input.KeyEsc {
-		return SceneTypeNone, ErrIngameQuited
-	}
-
-	if scene.UI.Score < 0 {
-		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s", scene.UI.UUID),
-			"Score: -",
-			"Press Space / Enter to Start",
-			"Press Esc to Quit",
-		})
-	} else {
-		scene.UI.DrawMenu([]string{
-			fmt.Sprintf("ID: %s", scene.UI.UUID),
-			fmt.Sprintf("Score: %d", scene.UI.Score),
-			"Press Space / Enter to Start",
-			"Press Esc to Quit",
-		})
-	}
-	return SceneTypeMenu, nil
+func (mng *SceneManager) SetInitialScene(name SceneType) {
+	mng.currentScene = mng.scenes[name]
 }
 
-func (scene *MenuScene) Finish() {}
-
-type MatchmakingScene struct {
-	Input *engine.Input
-	UI    *UserInterface
-}
-
-func NewMatchmakingScene(input *engine.Input, ui *UserInterface) *MatchmakingScene {
-	return &MatchmakingScene{
-		UI:    ui,
-		Input: input,
+func (mng *SceneManager) Update() error {
+	stype, err := mng.currentScene.Update()
+	if err != nil {
+		return err
 	}
-}
 
-func (scene *MatchmakingScene) Start() {
-	go scene.UI.ConnectWebSocket()
-	scene.UI.DrawMenu([]string{
-		"waiting for matchmaking...",
-	})
-}
-
-func (scene *MatchmakingScene) Update() (engine.SceneType, error) {
-	if scene.Input.KeyEsc {
-		return SceneTypeNone, ErrIngameQuited
+	if stype == mng.currentSceneType {
+		return nil
 	}
-	if scene.UI.Status == StatusStart {
-		return SceneTypeIngame, nil
-	}
-	if scene.UI.Status == StatusDrop {
-		return SceneTypeMenu, nil
-	}
-	scene.UI.DrawMenu([]string{
-		"waiting for matchmaking...",
-	})
-	return SceneTypeMatchmaking, nil
+	return mng.moveTo(stype)
 }
 
-func (scene *MatchmakingScene) Finish() {
-	if scene.UI.Status == StatusDrop {
-		scene.UI.CloseWebSocket()
+func (mng *SceneManager) Draw(screen *ebiten.Image) {
+	mng.currentScene.Draw(screen)
+}
+
+// moveTo changes current scene
+func (mng *SceneManager) moveTo(ty SceneType) error {
+	fmt.Printf("%s -> %s\n", string(mng.currentSceneType), string(ty))
+	scene := mng.scenes[ty]
+	if scene == nil {
+		return fmt.Errorf("scene %s not found", ty)
 	}
-	logger.Printf("move to ingame")
-}
-
-type IngameScene struct {
-	Input *engine.Input
-	UI    *UserInterface
-}
-
-func NewIngameScene(input *engine.Input, ui *UserInterface) *IngameScene {
-	return &IngameScene{
-		UI:    ui,
-		Input: input,
-	}
-}
-
-func (scene *IngameScene) Start() {}
-
-func (scene *IngameScene) Update() (engine.SceneType, error) {
-	if scene.UI.Status == StatusDrop {
-		return SceneTypeMenu, nil
-	}
-	return SceneTypeIngame, nil
-}
-
-func (scene *IngameScene) Finish() {
-	scene.UI.CloseWebSocket()
+	mng.currentScene.Finish()
+	mng.currentScene = scene
+	mng.currentSceneType = ty
+	mng.currentScene.Start()
+	return nil
 }

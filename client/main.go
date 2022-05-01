@@ -5,118 +5,100 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
+	"math/rand"
+	"time"
 
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/myoan/snake/api"
-	"github.com/myoan/snake/engine"
 )
 
-const (
-	Width  = 80
-	Height = 30
-
-	SceneTypeNone engine.SceneType = iota
-	SceneTypeMenu
-	SceneTypeMatchmaking
-	SceneTypeIngame
-
-	StatusInit = iota
-	StatusStart
-	StatusDrop
-)
-
-var (
-	logger *log.Logger
-)
-
-type Board struct {
-	board  [][]int
-	width  int
-	height int
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
+const (
+	screenWidth  = 500
+	screenHeight = 500
+)
+
 var addr = flag.String("addr", "localhost:8080", "http service address")
+var board *Board
+
+type Game struct {
+	sceneMng *SceneManager
+}
+
+func (g *Game) Update() error {
+	return g.sceneMng.Update()
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
+	g.sceneMng.Draw(screen)
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return screenWidth, screenHeight
+}
 
 func main() {
-	f, err := os.OpenFile("log/client.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Panic(err)
+	g := &Game{
+		sceneMng: NewSceneManager(),
 	}
-	logger = log.New(f, "", log.LstdFlags)
-	defer func() {
-		f.Sync()
-		f.Close()
-	}()
 
-	logger.Printf("========== GAME START ==========")
+	conn := NewConn()
 
-	flag.Parse()
-	log.SetFlags(0)
+	g.sceneMng.AddScene("menu", NewMenuScene(*addr, conn))
+	g.sceneMng.AddScene("matchmaking", NewMatchmakingScene(*addr, conn))
+	g.sceneMng.AddScene("ingame", NewIngameScene(conn, screenWidth, screenHeight))
 
-	ge := engine.NewGameEngine(10)
-	mng := ge.SceneManager
-	defer mng.Stop()
+	g.sceneMng.SetInitialScene("menu")
+	board, _ = NewBoard(40, 40, 400, 400)
 
-	event := ge.GetEventStream()
-	input := ge.Input
-	webEvent := make(chan engine.ControlEvent)
-
-	ui := NewUserInterface("noname", event, webEvent)
-
-	ui.AddHandler(api.GameStatusInit, func(message []byte) error {
-		logger.Printf("get init response: %s", string(message))
+	conn.AddHandler(api.GameStatusInit, func(message []byte) error {
 		var resp api.InitResponse
-		err = json.Unmarshal(message, &resp)
+		err := json.Unmarshal(message, &resp)
 		if err != nil {
-			logger.Println("unmarshal:", err)
 			return err
 		}
-		ui.UUID = resp.ID
+		conn.UUID = resp.ID
 		return nil
 	})
-	ui.AddHandler(api.GameStatusOK, func(message []byte) error {
+	conn.AddHandler(api.GameStatusOK, func(message []byte) error {
 		var resp api.EventResponse
-		err = json.Unmarshal(message, &resp)
+		err := json.Unmarshal(message, &resp)
 		if err != nil {
-			logger.Println("unmarshal:", err)
 			return err
 		}
-		if ui.Status == StatusInit {
-			ui.Status = StatusStart
+		if conn.Status == StatusInit || conn.Status == StatusWait {
+			conn.Status = StatusStart
 		}
-		board := generateBoard(resp.Body.Width, resp.Body.Height, resp.Body.Board)
-		ui.Draw(board)
+		board.Update(resp.Body.Board)
 		return nil
 	})
-	ui.AddHandler(api.GameStatusError, func(message []byte) error {
+	conn.AddHandler(api.GameStatusError, func(message []byte) error {
 		var resp api.EventResponse
-		err = json.Unmarshal(message, &resp)
+		err := json.Unmarshal(message, &resp)
 		if err != nil {
-			logger.Println("unmarshal:", err)
 			return err
 		}
 
-		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
-		ui.Status = StatusDrop
+		conn.Status = StatusDrop
 		for _, p := range resp.Body.Players {
-			if p.ID == ui.UUID {
-				ui.Score = p.Size
+			if p.ID == conn.UUID {
+				conn.Score = p.Size
 				break
 			}
 		}
 		return fmt.Errorf("error")
 	})
-	ui.AddHandler(api.GameStatusWaiting, func(message []byte) error {
-		logger.Printf("Receive waiting event")
+	conn.AddHandler(api.GameStatusWaiting, func(message []byte) error {
+		conn.Status = StatusWait
 		return nil
 	})
 
-	mng.AddScene(SceneTypeMenu, NewMenuScene(input, ui))
-	mng.AddScene(SceneTypeMatchmaking, NewMatchmakingScene(input, ui))
-	mng.AddScene(SceneTypeIngame, NewIngameScene(input, ui))
-	mng.SetInitialScene(SceneTypeMenu)
-
-	mng.Execute()
-	ui.Finish()
-	logger.Printf("========== GAME FINISH ==========")
+	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
+	ebiten.SetWindowTitle("Game of Life (Ebiten Demo)")
+	if err := ebiten.RunGame(g); err != nil {
+		log.Fatal(err)
+	}
 }
