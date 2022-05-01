@@ -56,8 +56,7 @@ func (b *Board) Draw(screen *ebiten.Image) {
 		for x, cell := range row {
 			gray := color.RGBA{0x30, 0x30, 0x30, 0xff}
 			apple := color.RGBA{0xff, 0x30, 0x30, 0xff}
-			// snake := color.RGBA{0xff, 0xff, 0xff, 0xff}
-			myself := color.RGBA{0xff, 0x00, 0xff, 0xff}
+			snake := color.RGBA{0xff, 0xff, 0xff, 0xff}
 			px := (cellWidth + borderLen) * x
 			py := (cellHeight + borderLen) * y
 
@@ -66,45 +65,52 @@ func (b *Board) Draw(screen *ebiten.Image) {
 			} else if cell == 0 {
 				ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, gray)
 			} else {
-				ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, myself)
+				ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, snake)
 			}
 		}
 	}
 }
 
-func NewIngameScene(conn *Conn, width, height int) *IngameScene {
+func NewIngameScene(game *Game, width, height int) *IngameScene {
 	return &IngameScene{
-		conn: conn,
+		game: game,
 	}
 }
 
 type IngameScene struct {
-	conn *Conn
+	game *Game
 }
 
 func (s *IngameScene) Start() {
+	// TODO create board here (not main)
 	// board, _ = NewBoard(40, 40, 400, 400)
 }
+
 func (s *IngameScene) Update() (SceneType, error) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
-		s.conn.event <- 0
+		s.game.conn.event <- 0
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
-		s.conn.event <- 1
+		s.game.conn.event <- 1
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyW) {
-		s.conn.event <- 2
+		s.game.conn.event <- 2
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
-		s.conn.event <- 3
+		s.game.conn.event <- 3
 	}
 
-	if s.conn.Status == StatusDrop {
+	if s.game.Status == StatusDrop {
 		return SceneType("menu"), nil
 	}
 	return SceneType("ingame"), nil
 }
-func (s *IngameScene) Finish() {}
+
+func (s *IngameScene) Finish() {
+	s.game.Status = StatusDrop
+	s.game.conn.Close()
+}
+
 func (s *IngameScene) Draw(screen *ebiten.Image) {
-	board.Draw(screen)
+	s.game.board.Draw(screen)
 }

@@ -8,25 +8,21 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text"
 )
 
-func NewMatchmakingScene(addr string, conn *Conn) *MatchmakingScene {
+func NewMatchmakingScene(game *Game) *MatchmakingScene {
 	return &MatchmakingScene{
-		waiting: true,
-		addr:    addr,
-		conn:    conn,
+		game: game,
 	}
 }
 
 type MatchmakingScene struct {
-	addr    string
-	waiting bool
-	conn    *Conn
+	game *Game
 }
 
 func (s *MatchmakingScene) Start() {
 }
 
 func (s *MatchmakingScene) Update() (SceneType, error) {
-	if s.conn.Status == StatusStart {
+	if s.game.Status == StatusStart {
 		return SceneType("ingame"), nil
 	}
 	return SceneType("matchmaking"), nil

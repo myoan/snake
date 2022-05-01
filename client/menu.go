@@ -33,22 +33,22 @@ func init() {
 	}
 }
 
-func NewMenuScene(addr string, conn *Conn) *MenuScene {
+func NewMenuScene(g *Game, addr string) *MenuScene {
 	return &MenuScene{
+		game: g,
 		addr: addr,
-		conn: conn,
 	}
 }
 
 type MenuScene struct {
+	game *Game
 	addr string
-	conn *Conn
 }
 
 func (s *MenuScene) Start() {}
 func (s *MenuScene) Update() (SceneType, error) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		go s.conn.Connect(s.addr)
+		go s.game.conn.Connect(s.addr)
 		return SceneType("matchmaking"), nil
 	}
 	return SceneType("menu"), nil

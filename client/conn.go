@@ -18,11 +18,9 @@ const (
 
 type Conn struct {
 	conn    *websocket.Conn
-	Status  int
 	event   chan int
 	webDone chan struct{}
 	funcMap map[int]func([]byte) error
-	Score   int
 	UUID    string
 }
 
@@ -31,7 +29,6 @@ func NewConn() *Conn {
 	done := make(chan struct{})
 	fm := make(map[int]func([]byte) error)
 	return &Conn{
-		Status:  0,
 		webDone: done,
 		event:   event,
 		funcMap: fm,
@@ -95,13 +92,11 @@ func (conn *Conn) Connect(addr string) {
 			return
 		}
 	}
-
 }
 
 // AddHandler adds a handler when server response is received.
 func (conn *Conn) AddHandler(handler int, fn func([]byte) error) {
 	conn.funcMap[handler] = fn
-
 }
 
 // CloseWebSocket closes disconnects to server.
@@ -112,6 +107,5 @@ func (conn *Conn) Close() {
 	// TODO: Does it exist other good way? (ex. wait for server response)
 	time.Sleep(300 * time.Millisecond)
 
-	conn.Status = 3
 	conn.conn.Close()
 }
