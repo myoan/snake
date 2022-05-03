@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
@@ -33,22 +33,20 @@ func init() {
 	}
 }
 
-func NewMenuScene(g *Game, addr string) *MenuScene {
+func NewMenuScene(addr string) *MenuScene {
 	return &MenuScene{
-		game: g,
 		addr: addr,
 	}
 }
 
 type MenuScene struct {
-	game *Game
 	addr string
 }
 
 func (s *MenuScene) Start() {}
 func (s *MenuScene) Update() (SceneType, error) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		go s.game.conn.Connect(s.addr)
+		go game.conn.Connect(s.addr)
 		return SceneType("matchmaking"), nil
 	}
 	return SceneType("menu"), nil
@@ -56,9 +54,9 @@ func (s *MenuScene) Update() (SceneType, error) {
 func (s *MenuScene) Finish() {}
 
 func (s *MenuScene) Draw(screen *ebiten.Image) {
-	gray := color.RGBA{0x80, 0x80, 0x80, 0xff}
-	const x, y = 20, 40
+	str := fmt.Sprintf("ID: %s\nScore: %d\nPress Enter", game.UUID, game.Score)
 	b := text.BoundString(mplusNormalFont, "Menu")
-	ebitenutil.DrawRect(screen, float64(b.Min.X+x), float64(b.Min.Y+y), float64(b.Dx()), float64(b.Dy()), gray)
-	text.Draw(screen, "Menu", mplusNormalFont, x, y, color.White)
+	x := 30
+	y := (screen.Bounds().Max.Y - b.Dy()) / 2
+	text.Draw(screen, str, mplusNormalFont, x, y, color.White)
 }

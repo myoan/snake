@@ -44,69 +44,71 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
 }
 
+var game *Game
+
 func main() {
 	var addr = flag.String("addr", "localhost:8080", "http service address")
 
 	board, _ := NewBoard(Width, Height, 400, 400)
-	g := &Game{
+	game = &Game{
 		sceneMng: NewSceneManager(),
 		conn:     NewConn(),
 		Status:   StatusInit,
 		board:    board,
+		UUID:     "-",
 	}
 
-	g.sceneMng.AddScene("menu", NewMenuScene(g, *addr))
-	g.sceneMng.AddScene("matchmaking", NewMatchmakingScene(g))
-	g.sceneMng.AddScene("ingame", NewIngameScene(g, screenWidth, screenHeight))
+	game.sceneMng.AddScene("menu", NewMenuScene(*addr))
+	game.sceneMng.AddScene("matchmaking", NewMatchmakingScene())
+	game.sceneMng.AddScene("ingame", NewIngameScene(screenWidth, screenHeight))
 
-	g.sceneMng.SetInitialScene("menu")
-
-	g.conn.AddHandler(api.GameStatusInit, func(message []byte) error {
+	game.sceneMng.SetInitialScene("menu")
+	game.conn.AddHandler(api.GameStatusInit, func(message []byte) error {
 		var resp api.InitResponse
 		err := json.Unmarshal(message, &resp)
 		if err != nil {
 			return err
 		}
-		g.conn.UUID = resp.ID
-		g.UUID = resp.ID
+		game.conn.UUID = resp.ID
+		game.UUID = resp.ID
 		return nil
 	})
-	g.conn.AddHandler(api.GameStatusOK, func(message []byte) error {
+	game.conn.AddHandler(api.GameStatusOK, func(message []byte) error {
 		var resp api.EventResponse
 		err := json.Unmarshal(message, &resp)
 		if err != nil {
 			return err
 		}
-		if g.Status == StatusInit || g.Status == StatusWait {
-			g.Status = StatusStart
+		if game.Status == StatusInit || game.Status == StatusWait {
+			game.Status = StatusStart
 		}
-		g.board.Update(resp.Body.Board)
+		game.board.Update(resp.Body.Board)
 		return nil
 	})
-	g.conn.AddHandler(api.GameStatusError, func(message []byte) error {
+	game.conn.AddHandler(api.GameStatusError, func(message []byte) error {
 		var resp api.EventResponse
 		err := json.Unmarshal(message, &resp)
 		if err != nil {
 			return err
 		}
 
-		g.Status = StatusDrop
+		game.Status = StatusDrop
 		for _, p := range resp.Body.Players {
-			if p.ID == g.UUID {
-				g.Score = p.Size
+			if p.ID == game.UUID {
+				game.Score = p.Size
 				break
 			}
 		}
 		return fmt.Errorf("error")
 	})
-	g.conn.AddHandler(api.GameStatusWaiting, func(message []byte) error {
-		g.Status = StatusWait
+	game.conn.AddHandler(api.GameStatusWaiting, func(message []byte) error {
+		game.Status = StatusWait
 		return nil
 	})
 
 	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
 	ebiten.SetWindowTitle("Snake Game")
-	if err := ebiten.RunGame(g); err != nil {
+	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}
 }
