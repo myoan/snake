@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
-	sdk "agones.dev/agones/sdks/go"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/myoan/snake/api"
@@ -72,23 +70,34 @@ func doSignal() {
 */
 
 func main() {
-	log.Print("Creating SDK instance")
-	addr := flag.String("addr", ":8082", "http service address")
-	ge := NewGameEngine()
-	s, err := sdk.NewSDK()
-	if err != nil {
-		log.Fatalf("Could not connect to sdk: %v", err)
+	var (
+		addr    string
+		agoness bool
+	)
+
+	flag.StringVar(&addr, "addr", ":8082", "http service address")
+	flag.BoolVar(&agoness, "agoness", false, "use Agoness framework")
+	flag.Parse()
+
+	var fw IGameServerFrameWork
+	var err error
+
+	if agoness {
+		ctx, _ := context.WithCancel(context.Background())
+		fw, err = NewAgonessFrameWork(ctx, 4)
+		if err != nil {
+			log.Fatalf("Could not connect to sdk: %v", err)
+		}
+	} else {
+		fw, err = NewNopFrameWork()
 	}
 
-	log.Print("Starting Health Ping")
-	ctx, _ := context.WithCancel(context.Background())
-	go doHealth(s, ctx)
-
-	e := s.Ready()
+	e := fw.Ready()
 	if e != nil {
 		log.Fatalf("Agones SDK: Failed to Ready: %v", e)
 	}
 
+	ge := NewGameEngine()
 	ge.SceneMng.AddHandler(EventClientConnect, SceneMatchmaking, func(args interface{}) {
 		log.Printf("Scene: MatchMaking (%d)\n", len(ge.Clients))
 		ta := args.(TriggerArgument)
@@ -97,7 +106,7 @@ func main() {
 		if ge.ReachMaxClient() {
 			ge.SceneMng.MoveScene(SceneIngame)
 
-			err = s.Allocate()
+			err = fw.Allocate()
 			if err != nil {
 				log.Fatalf("Agones SDK: Failed to Allocate: %v", err)
 			}
@@ -131,34 +140,15 @@ func main() {
 		ta := args.(TriggerArgument)
 		ge.DeleteClient(ta.Client.ID())
 		if ge.Ingame.isFinish() {
-			err = s.Shutdown()
+			err = fw.Shutdown()
 			if err != nil {
 				log.Fatalf("Agones SDK: Failed to Shutdown: %v", err)
 			}
 		}
 	})
 
-	flag.Parse()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ingameHandler(ge.SceneMng, w, r)
 	})
-
-	log.Fatal(http.ListenAndServe(*addr, nil))
-}
-
-// doHealth sends the regular Health Pings
-func doHealth(sdk *sdk.SDK, ctx context.Context) {
-	tick := time.Tick(4 * time.Second)
-	for {
-		err := sdk.Health()
-		if err != nil {
-			log.Fatalf("Could not send health ping, %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			log.Print("Stopped health pings")
-			return
-		case <-tick:
-		}
-	}
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
