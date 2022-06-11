@@ -38,10 +38,6 @@ type InitResponse struct {
 	ID     string `json:"id"`
 }
 
-type RestApiGetIDResponse struct {
-	UUID string `json:"uuid"`
-}
-
 const (
 	GameStatusInit = iota
 	GameStatusOK
