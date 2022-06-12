@@ -59,7 +59,7 @@ func main() {
 		Status:   StatusInit,
 		board:    board,
 		UUID:     "-",
-		Snake:    &Player{},
+		Snake:    &NonPlayer{},
 	}
 
 	game.sceneMng.AddScene("menu", NewMenuScene(addr))

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/myoan/snake/api"
@@ -62,6 +65,40 @@ type NonPlayer struct {
 }
 
 func (p *NonPlayer) Update(board []int, players []api.PlayerResponse) {
+	for _, player := range players {
+		if p.id == player.ID {
+			p.x = player.X
+			p.y = player.Y
+			p.dir = Direction(player.Direction)
+			fmt.Printf("(%d, %d, %d)\n", p.x, p.y, p.dir)
+		}
+	}
+
+	fixed := false
+
+	if p.x == 1 && p.dir == DirectionLeft {
+		p.dir = DirectionDown
+		fixed = true
+	}
+	if p.x == Width-2 && p.dir == DirectionRight {
+		p.dir = DirectionUp
+		fixed = true
+	}
+	if p.y == 1 && p.dir == DirectionUp {
+		p.dir = DirectionLeft
+		fixed = true
+	}
+	if p.y == Height-2 && p.dir == DirectionDown {
+		p.dir = DirectionRight
+		fixed = true
+	}
+
+	if !fixed {
+		r := rand.Intn(100)
+		if r <= 20 {
+			p.dir = Direction(r % 4)
+		}
+	}
 }
 
 func (p *NonPlayer) SetUUID(uuid string) {
