@@ -30,6 +30,7 @@ type Game struct {
 	Status   int
 	UUID     string
 	Score    int
+	Snake    Snake
 }
 
 func (g *Game) Update() error {
@@ -47,18 +48,21 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 var game *Game
 
 func main() {
-	var addr = flag.String("addr", "localhost:8080", "http service address")
+	var addr string
+	flag.StringVar(&addr, "addr", "localhost:8080", "http service address")
+	flag.Parse()
 
-	board, _ := NewBoard(Width, Height, 400, 400)
+	board, _ := NewBoard(Width, Height, 500, 500)
 	game = &Game{
 		sceneMng: NewSceneManager(),
 		conn:     NewConn(),
 		Status:   StatusInit,
 		board:    board,
 		UUID:     "-",
+		Snake:    &Player{},
 	}
 
-	game.sceneMng.AddScene("menu", NewMenuScene(*addr))
+	game.sceneMng.AddScene("menu", NewMenuScene(addr))
 	game.sceneMng.AddScene("matchmaking", NewMatchmakingScene())
 	game.sceneMng.AddScene("ingame", NewIngameScene(screenWidth, screenHeight))
 
@@ -71,6 +75,7 @@ func main() {
 		}
 		game.conn.UUID = resp.ID
 		game.UUID = resp.ID
+		game.Snake.SetUUID(resp.ID)
 		return nil
 	})
 	game.conn.AddHandler(api.GameStatusOK, func(message []byte) error {
@@ -82,6 +87,7 @@ func main() {
 		if game.Status == StatusInit || game.Status == StatusWait {
 			game.Status = StatusStart
 		}
+		game.Snake.Update(resp.Body.Board, resp.Body.Players)
 		game.board.Update(resp.Body.Board)
 		return nil
 	})
@@ -106,7 +112,7 @@ func main() {
 		return nil
 	})
 
-	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
+	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Snake Game")
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)

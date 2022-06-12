@@ -6,7 +6,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -51,7 +50,7 @@ func (b *Board) Update(raw []int) {
 	}
 }
 
-func (b *Board) Draw(screen *ebiten.Image) {
+func (b *Board) Draw(screen *ebiten.Image, me Snake) {
 	baseX := (screen.Bounds().Max.X - (cellWidth+borderLen)*b.width) / 2
 	baseY := (screen.Bounds().Max.Y - (cellHeight+borderLen)*b.height) / 2
 	for y, row := range b.board {
@@ -59,6 +58,7 @@ func (b *Board) Draw(screen *ebiten.Image) {
 			gray := color.RGBA{0x30, 0x30, 0x30, 0xff}
 			apple := color.RGBA{0xff, 0x30, 0x30, 0xff}
 			snake := color.RGBA{0xff, 0xff, 0xff, 0xff}
+			mySnake := color.RGBA{0x00, 0xff, 0xff, 0xff}
 			px := baseX + (cellWidth+borderLen)*x
 			py := baseY + (cellHeight+borderLen)*y
 
@@ -67,7 +67,11 @@ func (b *Board) Draw(screen *ebiten.Image) {
 			} else if cell == 0 {
 				ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, gray)
 			} else {
-				ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, snake)
+				if me.Head(x, y) {
+					ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, mySnake)
+				} else {
+					ebitenutil.DrawRect(screen, float64(px), float64(py), cellWidth, cellHeight, snake)
+				}
 			}
 		}
 	}
@@ -85,18 +89,7 @@ func (s *IngameScene) Start() {
 }
 
 func (s *IngameScene) Update() (SceneType, error) {
-	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
-		game.conn.SendDirection(DirectionLeft)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
-		game.conn.SendDirection(DirectionRight)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyW) {
-		game.conn.SendDirection(DirectionUp)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
-		game.conn.SendDirection(DirectionDown)
-	}
+	game.conn.SendDirection(game.Snake.GetDirection())
 
 	if game.Status == StatusDrop {
 		return SceneType("menu"), nil
@@ -110,5 +103,5 @@ func (s *IngameScene) Finish() {
 }
 
 func (s *IngameScene) Draw(screen *ebiten.Image) {
-	game.board.Draw(screen)
+	game.board.Draw(screen, game.Snake)
 }
