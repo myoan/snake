@@ -49,17 +49,27 @@ var game *Game
 
 func main() {
 	var addr string
+	var npc bool
 	flag.StringVar(&addr, "addr", "localhost:8080", "http service address")
+	flag.BoolVar(&npc, "npc", false, "execute as NPC")
 	flag.Parse()
 
 	board, _ := NewBoard(Width, Height, 500, 500)
+	var snake Snake
+
+	if npc {
+		snake = &NonPlayer{}
+	} else {
+		snake = &Player{}
+	}
+
 	game = &Game{
 		sceneMng: NewSceneManager(),
 		conn:     NewConn(),
 		Status:   StatusInit,
 		board:    board,
 		UUID:     "-",
-		Snake:    &NonPlayer{},
+		Snake:    snake,
 	}
 
 	game.sceneMng.AddScene("menu", NewMenuScene(addr))
