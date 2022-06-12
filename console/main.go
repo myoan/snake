@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/myoan/snake/api"
 	"github.com/myoan/snake/engine"
@@ -30,15 +29,6 @@ type Board struct{}
 var addr = flag.String("addr", "localhost:8080", "http service address")
 
 func main() {
-	f, err := os.OpenFile("log/client.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer func() {
-		f.Sync()
-		f.Close()
-	}()
-
 	log.Printf("========== GAME START ==========")
 
 	flag.Parse()
@@ -56,7 +46,7 @@ func main() {
 	ui.AddHandler(api.GameStatusInit, func(message []byte) error {
 		log.Printf("get init response: %s", string(message))
 		var resp api.InitResponse
-		err = json.Unmarshal(message, &resp)
+		err := json.Unmarshal(message, &resp)
 		if err != nil {
 			log.Println("unmarshal:", err)
 			return err
