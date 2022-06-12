@@ -58,7 +58,6 @@ func main() {
 	defer mng.Stop()
 
 	event := ge.GetEventStream()
-	input := ge.Input
 	webEvent := make(chan engine.ControlEvent)
 
 	ui := NewUserInterface("noname", event, webEvent)
@@ -111,9 +110,9 @@ func main() {
 		return nil
 	})
 
-	mng.AddScene(SceneTypeMenu, NewMenuScene(input, ui))
-	mng.AddScene(SceneTypeMatchmaking, NewMatchmakingScene(input, ui))
-	mng.AddScene(SceneTypeIngame, NewIngameScene(input, ui))
+	mng.AddScene(SceneTypeMenu, NewMenuScene(ui))
+	mng.AddScene(SceneTypeMatchmaking, NewMatchmakingScene(ui))
+	mng.AddScene(SceneTypeIngame, NewIngameScene(ui))
 	mng.SetInitialScene(SceneTypeMenu)
 
 	mng.Execute()
