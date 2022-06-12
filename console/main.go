@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	Width  = 80
-	Height = 30
+	Width  = 40
+	Height = 40
 
 	SceneTypeNone engine.SceneType = iota
 	SceneTypeMenu
@@ -25,15 +25,7 @@ const (
 	StatusDrop
 )
 
-var (
-	logger *log.Logger
-)
-
-type Board struct {
-	board  [][]int
-	width  int
-	height int
-}
+type Board struct{}
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
 
@@ -42,13 +34,12 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	logger = log.New(f, "", log.LstdFlags)
 	defer func() {
 		f.Sync()
 		f.Close()
 	}()
 
-	logger.Printf("========== GAME START ==========")
+	log.Printf("========== GAME START ==========")
 
 	flag.Parse()
 	log.SetFlags(0)
@@ -63,11 +54,11 @@ func main() {
 	ui := NewUserInterface("noname", event, webEvent)
 
 	ui.AddHandler(api.GameStatusInit, func(message []byte) error {
-		logger.Printf("get init response: %s", string(message))
+		log.Printf("get init response: %s", string(message))
 		var resp api.InitResponse
 		err = json.Unmarshal(message, &resp)
 		if err != nil {
-			logger.Println("unmarshal:", err)
+			log.Println("unmarshal:", err)
 			return err
 		}
 		ui.UUID = resp.ID
@@ -77,25 +68,24 @@ func main() {
 		var resp api.EventResponse
 		err = json.Unmarshal(message, &resp)
 		if err != nil {
-			logger.Println("unmarshal:", err)
+			log.Println("unmarshal:", err)
 			return err
 		}
 		if ui.Status == StatusInit {
 			ui.Status = StatusStart
 		}
-		board := generateBoard(resp.Body.Width, resp.Body.Height, resp.Body.Board)
-		ui.Draw(board)
+		ui.Update(resp.Body.Players)
 		return nil
 	})
 	ui.AddHandler(api.GameStatusError, func(message []byte) error {
 		var resp api.EventResponse
 		err = json.Unmarshal(message, &resp)
 		if err != nil {
-			logger.Println("unmarshal:", err)
+			log.Println("unmarshal:", err)
 			return err
 		}
 
-		logger.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
+		log.Printf("return from ConnectWebsocket read handler: %d", api.GameStatusError)
 		ui.Status = StatusDrop
 		for _, p := range resp.Body.Players {
 			if p.ID == ui.UUID {
@@ -106,7 +96,7 @@ func main() {
 		return fmt.Errorf("error")
 	})
 	ui.AddHandler(api.GameStatusWaiting, func(message []byte) error {
-		logger.Printf("Receive waiting event")
+		log.Printf("Receive waiting event")
 		return nil
 	})
 
@@ -117,5 +107,5 @@ func main() {
 
 	mng.Execute()
 	ui.Finish()
-	logger.Printf("========== GAME FINISH ==========")
+	log.Printf("========== GAME FINISH ==========")
 }

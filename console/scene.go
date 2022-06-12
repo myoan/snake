@@ -61,7 +61,7 @@ func (scene *MatchmakingScene) Finish() {
 	if scene.UI.Status == StatusDrop {
 		scene.UI.CloseWebSocket()
 	}
-	logger.Printf("move to ingame")
+	log.Printf("move to ingame")
 }
 
 type IngameScene struct {
