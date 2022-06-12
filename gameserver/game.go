@@ -49,9 +49,8 @@ func (ge *GameEngine) ExecuteIngame() {
 	}
 	event := make(chan Event)
 
-	game := NewGame(Width, Height, event, players)
-	ge.Ingame = game
-	go game.Run()
+	ge.Ingame = NewGame(Width, Height, event, players)
+	go ge.Ingame.Run()
 }
 
 const (
