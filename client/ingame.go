@@ -86,16 +86,16 @@ func (s *IngameScene) Start() {
 
 func (s *IngameScene) Update() (SceneType, error) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
-		game.conn.event <- 0
+		game.conn.SendDirection(DirectionLeft)
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
-		game.conn.event <- 1
+		game.conn.SendDirection(DirectionRight)
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyW) {
-		game.conn.event <- 2
+		game.conn.SendDirection(DirectionUp)
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
-		game.conn.event <- 3
+		game.conn.SendDirection(DirectionDown)
 	}
 
 	if game.Status == StatusDrop {

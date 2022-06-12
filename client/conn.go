@@ -9,6 +9,15 @@ import (
 	"github.com/myoan/snake/api"
 )
 
+type Direction int
+
+const (
+	DirectionLeft Direction = iota
+	DirectionRight
+	DirectionUp
+	DirectionDown
+)
+
 const (
 	StatusInit = iota
 	StatusWait
@@ -33,6 +42,10 @@ func NewConn() *Conn {
 		event:   event,
 		funcMap: fm,
 	}
+}
+
+func (conn *Conn) SendDirection(d Direction) {
+	conn.event <- int(d)
 }
 
 func (conn *Conn) Connect(addr string) {
