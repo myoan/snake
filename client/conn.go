@@ -87,7 +87,14 @@ func (conn *Conn) Connect(addr string) {
 				Key:       ctrl,
 			}
 			bytes, _ := json.Marshal(&event)
-			err := c.WriteMessage(websocket.TextMessage, bytes)
+
+			msg := &api.Message{
+				UUID: conn.UUID,
+				Path: "move",
+				Body: bytes,
+			}
+			msgbytes, _ := json.Marshal(&msg)
+			err := c.WriteMessage(websocket.TextMessage, msgbytes)
 			if err != nil {
 				return
 			}

@@ -7,6 +7,12 @@ const (
 	MoveDown
 )
 
+type Message struct {
+	UUID string `json:"uuid"`
+	Path string `json:"path"`
+	Body []byte `json:"body"`
+}
+
 type EventRequest struct {
 	UUID      string `json:"uuid"`
 	Eventtype int    `json:"eventtype"`
