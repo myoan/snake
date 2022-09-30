@@ -12,7 +12,7 @@ import (
 type Snake interface {
 	Update([]int, []api.PlayerResponse)
 	SetUUID(string)
-	GetDirection() Direction
+	GetDirection() (Direction, bool)
 	Head(int, int) bool
 }
 
@@ -40,21 +40,26 @@ func (p *Player) Head(x, y int) bool {
 	return p.x == x && p.y == y
 }
 
-func (p *Player) GetDirection() Direction {
+func (p *Player) GetDirection() (Direction, bool) {
+	changed := false
 	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
 		p.dir = DirectionLeft
+		changed = true
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
 		p.dir = DirectionRight
+		changed = true
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyW) {
 		p.dir = DirectionUp
+		changed = true
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
 		p.dir = DirectionDown
+		changed = true
 	}
 
-	return p.dir
+	return p.dir, changed
 }
 
 type NonPlayer struct {
@@ -105,8 +110,8 @@ func (p *NonPlayer) SetUUID(uuid string) {
 	p.id = uuid
 }
 
-func (p *NonPlayer) GetDirection() Direction {
-	return p.dir
+func (p *NonPlayer) GetDirection() (Direction, bool) {
+	return p.dir, true
 }
 
 func (p *NonPlayer) Head(int, int) bool {

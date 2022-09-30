@@ -89,7 +89,9 @@ func (s *IngameScene) Start() {
 }
 
 func (s *IngameScene) Update() (SceneType, error) {
-	game.conn.SendDirection(game.Snake.GetDirection())
+	if dir, changed := game.Snake.GetDirection(); changed {
+		game.conn.SendDirection(dir)
+	}
 
 	if game.Status == StatusDrop {
 		return SceneType("menu"), nil
